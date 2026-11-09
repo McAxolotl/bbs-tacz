@@ -6,7 +6,8 @@
   "client": [
     "MountProbeMixin",
     "ArmProbeMixin",
-    "HandNeutralProbeMixin"
+    "HandNeutralProbeMixin",
+    "ReviewPoseProbeMixin"
   ],
   "injectors": {
     "defaultRequire": 1

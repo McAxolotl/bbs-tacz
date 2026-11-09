@@ -6,7 +6,8 @@
   "environment": "client",
   "entrypoints": {
     "client": [
-      "mcaxolotl.bbstacz.smoke.SmokeClient"
+      "mcaxolotl.bbstacz.smoke.SmokeClient",
+      "mcaxolotl.bbstacz.smoke.ReviewClient"
     ]
   },
   "depends": {

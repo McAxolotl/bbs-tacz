@@ -121,6 +121,15 @@ tasks.named('runClient') {
     }
 }
 
+tasks.named('runClient') {
+    if (project.hasProperty('review')) {
+        dependsOn tasks.named('smokeClasses')
+        classpath += sourceSets.smoke.runtimeClasspath
+        systemProperty 'bbstacz.review', project.property('review')
+        doFirst { file('run/bbs-tacz-review-' + project.property('review') + '.txt').delete() }
+    }
+}
+
 tasks.register('verifySmoke') {
     doLast {
         def report = file('run/bbs-tacz-smoke.txt')
