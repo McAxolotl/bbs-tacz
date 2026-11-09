@@ -12,14 +12,17 @@ import net.minecraft.client.gui.screens.TitleScreen;
 public final class ReviewClient implements ClientModInitializer {
     public interface Scenario { boolean tick(Minecraft client, int tick) throws Exception; }
     private boolean creating, finished;
+    private final long startedAt = System.currentTimeMillis();
     private int tick;
     private Scenario scenario;
     @Override public void onInitializeClient() {
         String name = System.getProperty("bbstacz.review");
         if (name == null || !name.matches("[A-Za-z][A-Za-z0-9_]*")) return;
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (finished || client.getOverlay() != null) return;
+            if (finished) return;
             try {
+                if (creating && scenario != null && client.player == null) throw new AssertionError("Native review world disconnected before completion");
+                if (client.getOverlay() != null) return;
                 if (!creating && client.screen instanceof TitleScreen) {
                     creating = true; client.options.pauseOnLostFocus = false;
                     client.createWorldOpenFlows().createFreshLevel("bbs-tacz-review-" + name + "-" + System.currentTimeMillis(),
@@ -42,8 +45,20 @@ public final class ReviewClient implements ClientModInitializer {
     }
     private void finish(Minecraft client, String name, String result) {
         finished = true;
+        try {
+            // The result includes teardown. An early PASS hides crashes during borrowed-equipment / action cleanup.
+            if (videoActive()) mchorse.bbs_mod.BBSModClient.getVideoRecorder().stopRecording();
+            if (client.level != null) client.level.disconnect();
+            client.clearLevel();
+            Path crashes = Path.of("crash-reports");
+            if (Files.isDirectory(crashes)) try (var files = Files.list(crashes)) {
+                if (files.anyMatch(path -> path.toString().endsWith(".txt") && path.toFile().lastModified() >= startedAt))
+                    result = "FAIL native crash report produced during validation";
+            }
+        } catch (Exception failure) { failure.printStackTrace(); result = "FAIL native teardown: " + failure; }
         try { Files.writeString(Path.of("bbs-tacz-review-" + name + ".txt"), result + "\n"); } catch (Exception e) { e.printStackTrace(); }
         client.stop();
     }
+    private boolean videoActive() { return mchorse.bbs_mod.BBSModClient.getVideoRecorder() != null && mchorse.bbs_mod.BBSModClient.getVideoRecorder().isRecording(); }
     public static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
 }

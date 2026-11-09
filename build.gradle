@@ -123,6 +123,17 @@ tasks.named('runClient') {
 
 def nativeReview = project.hasProperty('review') ? project.property('review').toString() : null
 if (nativeReview != null && !(nativeReview ==~ /[A-Za-z][A-Za-z0-9_]*/)) throw new GradleException('Review must be a simple scenario class name')
+// A PASS written before teardown must not hide a late integrated-server/client crash.
+def nativeRunStartedAt = 0L
+tasks.named('runClient') {
+    if (nativeReview != null || project.hasProperty('smoke')) {
+        doFirst { nativeRunStartedAt = System.currentTimeMillis() }
+        doLast {
+            def crashes = file('run/crash-reports').listFiles()?.findAll { it.name.endsWith('.txt') && it.lastModified() >= nativeRunStartedAt }
+            if (crashes) throw new GradleException("Native validation produced crash reports: ${crashes*.name}")
+        }
+    }
+}
 def assertNativeReport = { File report, String expected ->
     if (!report.isFile() || report.text.trim() != expected) throw new GradleException("Native validation did not pass: ${report.isFile() ? report.text.trim() : 'no report'}")
     logger.lifecycle(report.text.trim())
