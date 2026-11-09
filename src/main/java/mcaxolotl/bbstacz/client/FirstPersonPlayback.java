@@ -17,6 +17,9 @@ import mcaxolotl.bbstacz.recording.FrameSnapshot;
 import mcaxolotl.bbstacz.recording.TaczReplayChannels;
 import mchorse.bbs_mod.film.BaseFilmController;
 import mchorse.bbs_mod.film.Recorder;
+import mchorse.bbs_mod.film.WorldFilmController;
+import mchorse.bbs_mod.film.FrozenFilmController;
+import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.film.replays.Replay;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -30,8 +33,8 @@ import org.joml.Matrix4f;
 
 public final class FirstPersonPlayback {
     public record Target(BaseFilmController controller, Replay replay, float tick, FrameSnapshot frame) {}
-    private static final Map<BaseFilmController, Boolean> CONTROLLERS = new WeakHashMap<>();
-    private static BaseFilmController current;
+    private static final Map<BaseFilmController, Long> CONTROLLERS = new WeakHashMap<>();
+    private static long sequence;
     private static FrameSnapshot rendering;
     private static Matrix4f renderBase;
     private static String cachedNbt;
@@ -40,13 +43,35 @@ public final class FirstPersonPlayback {
     private static long renderedFrames;
     private FirstPersonPlayback() {}
     public static void watch(BaseFilmController controller) {
-        if (controller instanceof Recorder || controller.film == null || !controller.film.hasFirstPerson()) return;
-        CONTROLLERS.put(controller, true); current = controller;
+        if (controller instanceof Recorder || controller instanceof FrozenFilmController || controller.film == null || !controller.film.hasFirstPerson()) return;
+        CONTROLLERS.put(controller, ++sequence);
     }
-    public static void stop(BaseFilmController controller) { CONTROLLERS.remove(controller); if (current == controller) current = null; }
+    public static void stop(BaseFilmController controller) { CONTROLLERS.remove(controller); }
+    private static BaseFilmController current() {
+        // Managed world playback owns the world camera, even if the editor emits a later tick event.
+        var films = BBSModClient.getFilms();
+        if (films != null) {
+            var managed = films.getControllers();
+            for (int i = managed.size() - 1; i >= 0; i--) {
+                var controller = managed.get(i);
+                if (controller instanceof WorldFilmController && !(controller instanceof Recorder)
+                    && controller.film != null && controller.film.hasFirstPerson() && !controller.hasFinished()) return controller;
+            }
+        }
+        // Keep intentional editor/standalone previews working, without holding them alive after shutdown.
+        BaseFilmController latest = null; long order = -1;
+        for (var entry : CONTROLLERS.entrySet()) {
+            var controller = entry.getKey();
+            if (controller.film == null || !controller.film.hasFirstPerson()
+                || controller instanceof WorldFilmController && controller.hasFinished()) continue;
+            if (entry.getValue() > order) { latest = controller; order = entry.getValue(); }
+        }
+        return latest;
+    }
     public static Target target(float delta) {
-        if (!TaczConfig.INSTANCE.firstPersonReplay || CommandJournal.recorder() != null || current == null
-            || current.film == null || Minecraft.getInstance().player == null) return null;
+        if (!TaczConfig.INSTANCE.firstPersonReplay || CommandJournal.recorder() != null || Minecraft.getInstance().player == null) return null;
+        var current = current();
+        if (current == null) return null;
         Replay replay = current.film.getFirstPersonReplay();
         if (replay == null || !replay.enabled.get() || !(replay.form.get() instanceof mcaxolotl.bbstacz.forms.TaczForm)) return null;
         var channel = ((TaczReplayChannels) replay.keyframes).bbstacz$state();
@@ -115,5 +140,5 @@ public final class FirstPersonPlayback {
             pose.popPose(); rendering = null; renderBase = null;
         }
     }
-    public static void clear() { CONTROLLERS.clear(); current = null; rendering = null; renderBase = null; cachedNbt = null; cachedStack = ItemStack.EMPTY; warned = false; }
+    public static void clear() { CONTROLLERS.clear(); sequence = 0; rendering = null; renderBase = null; cachedNbt = null; cachedStack = ItemStack.EMPTY; warned = false; }
 }

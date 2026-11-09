@@ -28,6 +28,7 @@
     "MirrorWorldParticleMixin",
     "MirrorMuzzleCameraMixin",
     "RecordedHandPassMixin",
+    "F6PlaybackMixin",
     "RecordedHandBobbingMixin",
     "NativePlayerNameMixin",
     "RecordedArmMixin",
