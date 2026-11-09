@@ -26,7 +26,6 @@ public final class NativeRenderScope implements AutoCloseable {
     private final LivingEntity previousEntity;
     private final boolean previousMuzzle, previousShell;
     private boolean closed;
-    private final com.tacz.guns.client.animation.third.AnimationRenderContext animation;
     private final Runnable restorePlayerAnimation;
     private final Long previousFlash;
     private final float previousRotation;
@@ -45,9 +44,8 @@ public final class NativeRenderScope implements AutoCloseable {
             if (timestamp != null) mcaxolotl.bbstacz.mixin.client.MuzzleFlashAccess.bbstacz$thirdPersonTimes().put(player, timestamp);
             if (frame != null) mcaxolotl.bbstacz.mixin.client.MuzzleFlashAccess.bbstacz$rotation(frame.flashRotation());
         }
-        // Native PA body/limb transforms are evaluated once and applied below as a baked pose.
-        // Suppress a second application from the visual player's own layers during this draw.
-        animation = com.tacz.guns.client.animation.third.AnimationRenderContext.hand(player);
+        // A body draw must never masquerade as a first-person hand: TACZ neutralizes hand arms.
+        // The evaluated PA layer supplies absolute model-part transforms without ticking another clock.
         restorePlayerAnimation = EvaluatedPlayerAnimation.bind(player, pose);
         MuzzleFlashRender.isSelf = false; ShellRender.isSelf = false; SCOPES.get().push(this);
     }
@@ -58,7 +56,7 @@ public final class NativeRenderScope implements AutoCloseable {
         if (previousFlash == null) mcaxolotl.bbstacz.mixin.client.MuzzleFlashAccess.bbstacz$thirdPersonTimes().remove(player);
         else mcaxolotl.bbstacz.mixin.client.MuzzleFlashAccess.bbstacz$thirdPersonTimes().put(player, previousFlash);
         mcaxolotl.bbstacz.mixin.client.MuzzleFlashAccess.bbstacz$rotation(previousRotation);
-        restorePlayerAnimation.run(); animation.close(); SCOPES.get().remove(this);
+        restorePlayerAnimation.run(); SCOPES.get().remove(this);
     }
     public static void clear() { while (current() != null) current().close(); SCOPES.remove(); }
 }

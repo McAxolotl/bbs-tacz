@@ -26,7 +26,7 @@ public final class ActorAnimations {
     private ActorAnimations() {}
     public static void tick(IEntity source, TaczVisualPlayer proxy) {
         if (!PlayerAnimatorCompat.isInstalled()) return;
-        boolean recorded = ReplayBindings.get(source) != null;
+        boolean recorded = hasRecordedPose(source);
         if (recorded || source instanceof MCEntity mc && mc.getMcEntity() instanceof AbstractClientPlayer) {
             LAST_TICK.remove(proxy); AnimationManager.stopAllAnimation(proxy, 0); return;
         }
@@ -42,8 +42,12 @@ public final class ActorAnimations {
         else PlayerAnimatorCompat.playAnimation(proxy, display, proxy.walkAnimation.speed());
         ((IAnimatedPlayer) (Object) proxy).playerAnimator_getAnimation().tick();
     }
+    private static boolean hasRecordedPose(IEntity source) {
+        var frame = ReplayBindings.sample(source, 0);
+        return frame != null && !frame.humanoid().isEmpty();
+    }
     public static boolean owns(IEntity source) {
-        return ReplayBindings.get(source) == null && !(source instanceof MCEntity mc && mc.getMcEntity() instanceof AbstractClientPlayer);
+        return !hasRecordedPose(source) && !(source instanceof MCEntity mc && mc.getMcEntity() instanceof AbstractClientPlayer);
     }
     /** Direct native animation API; never reposts events (which would also duplicate sounds/projectiles). */
     public static void event(LivingEntity owner, ItemStack stack, String operation) {

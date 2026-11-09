@@ -86,6 +86,9 @@ public final class TaczFormRenderer extends FormRenderer<TaczForm> implements IT
     private void draw(IEntity source, PoseStack stack, int light, int overlay, float delta, FormRenderingContext context) {
         var visual = visualPlayer(); if (visual == null || source == null) return;
         visual.sync(source, ReplayBindings.sample(source, delta), delta);
+        // Editor/static previews can draw a form without ever calling Form.update().
+        // Only a draw owns this native session update; matrix queries remain read-only.
+        mcaxolotl.bbstacz.client.ActorAnimations.tick(source, visual);
         PlayerRenderer renderer = renderer(); var rig = getRig(); var poses = evaluated(source, delta);
         var consumers = FormUtilsClient.getProvider();
         boolean[] first = {false};

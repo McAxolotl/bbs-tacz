@@ -27,10 +27,10 @@ final class EvaluatedPlayerAnimation implements IAnimation {
     }
     @Override public void tick() {}
     @Override public void setupAnim(float delta) {}
-    @Override public boolean isActive() { return !poses.isEmpty(); }
+    @Override public boolean isActive() { return !poses.isEmpty() && !ThirdPersonPose.isSampling(); }
     @Override public FirstPersonMode getFirstPersonMode(float delta) { return FirstPersonMode.DISABLED; }
     @Override public Vec3f get3DTransform(String name, TransformType type, float delta, Vec3f fallback) {
-        if (poses.isEmpty()) return fallback;
+        if (poses.isEmpty() || ThirdPersonPose.isSampling()) return fallback;
         if (type == TransformType.BEND) {
             String role = switch (name) { case "body" -> "body"; case "torso" -> "torso"; case "rightArm" -> "right_arm"; case "leftArm" -> "left_arm"; case "rightLeg" -> "right_leg"; case "leftLeg" -> "left_leg"; default -> null; };
             var bend = role == null ? null : poses.get("bend/" + role);
@@ -41,7 +41,10 @@ final class EvaluatedPlayerAnimation implements IAnimation {
         }
         var item = poses.get(name.equals("rightItem") ? "item/right" : name.equals("leftItem") ? "item/left" : "");
         if (item != null) return type == TransformType.ROTATION ? new Vec3f(item.at(3), item.at(4), item.at(5)) : new Vec3f(item.at(6), item.at(7), item.at(8));
-        // Model-part TRS and the actor anchor are applied once by NativePlayerPose/NativeBodyRotationMixin.
-        return Vec3f.ZERO;
+        String part = switch (name) { case "head" -> "head"; case "torso" -> "torso"; case "rightArm" -> "right_arm"; case "leftArm" -> "left_arm"; case "rightLeg" -> "right_leg"; case "leftLeg" -> "left_leg"; default -> null; };
+        var value = part == null ? null : poses.get(part);
+        if (value != null) return type == TransformType.ROTATION ? new Vec3f(value.at(3),value.at(4),value.at(5)) : new Vec3f(value.at(0),value.at(1),value.at(2));
+        // NativeBodyRotationMixin owns the full actor anchor; block lower-layer body transforms only.
+        return name.equals("body") ? Vec3f.ZERO : fallback;
     }
 }
