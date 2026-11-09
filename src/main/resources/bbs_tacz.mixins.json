@@ -13,7 +13,8 @@
     "RecordedCrawlValidationMixin",
     "ActionPlayerSeekAccess",
     "TaczActionTimingMixin",
-    "TaczFilmDurationMixin"
+    "TaczFilmDurationMixin",
+    "ActionManagerListMixin"
   ],
   "injectors": {
     "defaultRequire": 1
