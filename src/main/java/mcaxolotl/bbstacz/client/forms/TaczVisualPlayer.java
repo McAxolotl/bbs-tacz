@@ -13,7 +13,6 @@ import mchorse.bbs_mod.mixin.LimbAnimatorAccessor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.client.resources.DefaultPlayerSkin;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Pose;
@@ -23,11 +22,12 @@ import net.minecraft.world.phys.Vec3;
 public final class TaczVisualPlayer extends RemotePlayer {
     public boolean slim;
     private float lean, previousLean;
-    private ResourceLocation skin;
+    private ResourceLocation skin, selectedSkin;
+    public void selectedSkin(ResourceLocation skin) { selectedSkin = skin; }
     public TaczVisualPlayer(ClientLevel level, GameProfile profile, boolean slim) { super(level, profile); this.slim = slim; noPhysics = true; }
     @Override public String getModelName() { return slim ? "slim" : "default"; }
     @Override public ResourceLocation getSkinTextureLocation() {
-        return skin != null ? skin : new ResourceLocation("minecraft", "textures/entity/player/" + (slim ? "slim/alex.png" : "wide/steve.png"));
+        return selectedSkin != null ? selectedSkin : skin != null ? skin : new ResourceLocation("minecraft", "textures/entity/player/" + (slim ? "slim/alex.png" : "wide/steve.png"));
     }
     @Override public float getSwimAmount(float delta) { return previousLean + (lean - previousLean) * delta; }
     public void sync(IEntity source, FrameSnapshot frame) { sync(source, frame, 0); }

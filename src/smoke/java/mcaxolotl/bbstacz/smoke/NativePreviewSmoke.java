@@ -40,4 +40,32 @@ final class NativePreviewSmoke {
             view.popPose(); RenderSystem.applyModelViewMatrix(); RenderSystem.setProjectionMatrix(projection, sorting); RenderSystem.setShaderLights(l0, l1);
         }
     }
+    static int arm(Minecraft client, TaczFormRenderer renderer, net.minecraft.world.InteractionHand hand, String file) throws Exception {
+        return arm(client, renderer, hand, file, false);
+    }
+    static int arm(Minecraft client, TaczFormRenderer renderer, net.minecraft.world.InteractionHand hand, String file, boolean pendingForeignLayer) throws Exception {
+        var target = new TextureTarget(512,512,true,Minecraft.ON_OSX);
+        var projection = new Matrix4f(RenderSystem.getProjectionMatrix()); var sorting = RenderSystem.getVertexSorting();
+        var view = RenderSystem.getModelViewStack(); view.pushPose(); view.setIdentity(); RenderSystem.applyModelViewMatrix();
+        try {
+            target.setClearColor(0.03f,0.04f,0.05f,1); target.clear(Minecraft.ON_OSX); target.bindWrite(true);
+            RenderSystem.setProjectionMatrix(new Matrix4f().setOrtho(-1,1,-1,1,0.05f,100), VertexSorting.ORTHOGRAPHIC_Z);
+            client.gameRenderer.lightTexture().turnOnLightLayer();
+            PoseStack pose = new PoseStack(); pose.translate(0,0.25,-4); pose.scale(1,-1,1);
+            if (pendingForeignLayer) {
+                var vertices=mchorse.bbs_mod.forms.FormUtilsClient.getProvider().getBuffer(net.minecraft.client.renderer.RenderType.entityCutout(new net.minecraft.resources.ResourceLocation("minecraft","textures/block/white_concrete.png")));
+                for(int i=0;i<4;i++) vertices.vertex(5+(i%2),5+(i/2),-3).color(255,255,255,255).uv(0,0).overlayCoords(0).uv2(15728880).normal(0,0,1).endVertex();
+            }
+            renderer.renderArm(pose,15728880,client.player,hand);
+            try(var image=Screenshot.takeScreenshot(target)) {
+                int magenta=0;
+                for(int y=0;y<512;y++) for(int x=0;x<512;x++) { int c=image.getPixelRGBA(x,y); if((c&255)>80 && ((c>>8)&255)<50 && ((c>>16)&255)>80) magenta++; }
+                image.writeToFile(Path.of(file)); return magenta;
+            }
+        } finally {
+            client.gameRenderer.lightTexture().turnOffLightLayer(); target.destroyBuffers(); client.getMainRenderTarget().bindWrite(true);
+            view.popPose(); RenderSystem.applyModelViewMatrix(); RenderSystem.setProjectionMatrix(projection,sorting);
+        }
+    }
+
 }

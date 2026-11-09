@@ -56,7 +56,9 @@ public final class TaczFormRenderer extends FormRenderer<TaczForm> implements IT
         if (level == null) return null;
         if (actor != null && actor.getWorld() != level) actor = null;
         if (player == null || player.level() != level) player = new TaczVisualPlayer(level, profile, form.slim.get());
-        player.slim = form.slim.get(); return player;
+        player.slim = form.slim.get();
+        player.selectedSkin(mcaxolotl.bbstacz.client.SkinTextureBridge.skin(form.texture.get()));
+        return player;
     }
     public MobRig getRig() {
         var player = visualPlayer(); if (player == null) return null;
@@ -75,7 +77,6 @@ public final class TaczFormRenderer extends FormRenderer<TaczForm> implements IT
     @Override public void tick(IEntity entity) {
         actor = entity; var visual = visualPlayer(); if (visual != null) { visual.sync(entity, ReplayBindings.sample(entity, 0)); mcaxolotl.bbstacz.client.ActorAnimations.tick(entity, visual); }
     }
-    private void bindSkin() { if (form.texture.get() != null) mchorse.bbs_mod.BBSModClient.getTextures().bindTexture(form.texture.get()); }
     @Override protected void updateStencilMap(FormRenderingContext context) {
         context.stencilMap.addPicking(form, ""); var rig = getRig();
         if (rig != null) for (var part : rig.ordered()) context.stencilMap.addPicking(form, rig.name(part));
@@ -91,12 +92,13 @@ public final class TaczFormRenderer extends FormRenderer<TaczForm> implements IT
         mcaxolotl.bbstacz.client.ActorAnimations.tick(source, visual);
         PlayerRenderer renderer = renderer(); var rig = getRig(); var poses = evaluated(source, delta);
         var consumers = FormUtilsClient.getProvider();
-        boolean[] first = {false};
-        CustomVertexConsumerProvider.hijackVertexFormat(layer -> {
-            if (!first[0]) { bindSkin(); first[0] = true; }
-            if (context != null && context.isPicking()) { setupTarget(context, BBSShaders.getPickerModelsProgram()); RenderSystem.setShader(BBSShaders::getPickerModelsProgram); }
-        });
-        if (context != null && context.isPicking()) consumers.setSubstitute(MobPickerVertexConsumer::new);
+        boolean picking = context != null && context.isPicking();
+        if (picking) {
+            CustomVertexConsumerProvider.hijackVertexFormat(layer -> {
+                setupTarget(context, BBSShaders.getPickerModelsProgram()); RenderSystem.setShader(BBSShaders::getPickerModelsProgram);
+            });
+            consumers.setSubstitute(MobPickerVertexConsumer::new);
+        }
         Matrix4f modelView = new Matrix4f(RenderSystem.getModelViewMatrix());
         try (var state = new PlayerModelRenderState(renderer.getModel()); var guns = new mcaxolotl.bbstacz.client.NativeGunModels(visual)) {
             collectLocal(source, delta);
@@ -109,7 +111,8 @@ public final class TaczFormRenderer extends FormRenderer<TaczForm> implements IT
                 consumers.endBatch();
             }
         } finally {
-            consumers.setSubstitute(null); CustomVertexConsumerProvider.clearRunnables(); RenderSystem.getModelViewMatrix().set(modelView);
+            if (picking) { consumers.setSubstitute(null); CustomVertexConsumerProvider.clearRunnables(); }
+            RenderSystem.getModelViewMatrix().set(modelView);
         }
     }
     private void collectLocal(IEntity source, float delta) {
@@ -152,11 +155,10 @@ public final class TaczFormRenderer extends FormRenderer<TaczForm> implements IT
     @Override public boolean renderArm(PoseStack stack, int light, AbstractClientPlayer source, InteractionHand hand) {
         var visual = visualPlayer(); if (visual == null) return false;
         var entity = new MCEntity(source); visual.sync(entity, null); var consumers = FormUtilsClient.getProvider();
-        boolean[] first = {false}; CustomVertexConsumerProvider.hijackVertexFormat(layer -> { if (!first[0]) { bindSkin(); first[0] = true; } });
         try (var state = new PlayerModelRenderState(renderer().getModel()); var drawing = AnimationRenderContext.hand(visual)) {
             if (hand == InteractionHand.MAIN_HAND) renderer().renderRightHand(stack, consumers, light, visual); else renderer().renderLeftHand(stack, consumers, light, visual);
             consumers.endBatch();
-        } finally { CustomVertexConsumerProvider.clearRunnables(); }
+        }
         return true;
     }
     @Override protected void renderInUI(UIContext context, int x1, int y1, int x2, int y2) {
