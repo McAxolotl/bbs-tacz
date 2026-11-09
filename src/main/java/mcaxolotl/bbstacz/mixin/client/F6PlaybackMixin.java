@@ -10,13 +10,22 @@ import mchorse.bbs_mod.network.ClientNetwork;
 import mchorse.bbs_mod.film.WorldVideoExportSession;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /** F6 starts a fresh playback, not the editor's same-id frozen frame or server-side preview. */
 @Mixin(value = WorldVideoExportSession.class, remap = false)
 public abstract class F6PlaybackMixin {
+    @Shadow private Film film;
+    @ModifyArg(method = "start", at = @At(value = "INVOKE", target = "Lmchorse/bbs_mod/film/WorldVideoExportSession;begin(IIIJ)Z"), index = 3)
+    private long bbstacz$startupDelay(long delay) {
+        var replay = film == null ? null : film.getFirstPersonReplay();
+        // Even with no cosmetic delay, asynchronous playback has to reach the warm-up state machine.
+        return replay != null && replay.form.get() instanceof TaczForm ? Math.max(1, delay) : delay;
+    }
     @Unique private String bbstacz$pendingFilm;
     @Unique private long bbstacz$requestedAt;
     @Inject(method = "start", at = @At(value = "INVOKE", target = "Lmchorse/bbs_mod/film/Films;playFilm(Ljava/lang/String;Z)V"))

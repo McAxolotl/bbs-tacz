@@ -31,6 +31,7 @@ import org.lwjgl.glfw.GLFW;
 /** Real public take -> editor apply -> save/load -> frozen preview -> actual F6 key -> FFmpeg world export. */
 public class F6ExportReview implements ReviewClient.Scenario {
     protected boolean withAudio() { return false; }
+    protected float warmupDelay() { return 0.8f; }
     protected void configureForm(TaczForm form) throws Exception {}
     private com.tacz.guns.client.sound.GunSoundInstance interrupted;
     private Film film;
@@ -54,7 +55,7 @@ public class F6ExportReview implements ReviewClient.Scenario {
             output=Path.of("review-f6-"+System.currentTimeMillis()).toAbsolutePath(); Files.createDirectories(output);
             BBSSettings.videoEncoderPath.set("/usr/bin/ffmpeg"); BBSSettings.videoExportPath.set(output.toString());
             BBSSettings.videoWidth.set(320); BBSSettings.videoHeight.set(180); BBSSettings.videoFrameRate.set(30);
-            BBSSettings.videoDelay.set(0.8f); BBSSettings.worldExportResizeWindow.set(true);
+            BBSSettings.videoDelay.set(warmupDelay()); BBSSettings.worldExportResizeWindow.set(true);
             BBSSettings.videoExportAudio.set(withAudio()); BBSSettings.videoExportMinecraftSounds.set(withAudio());
             BBSSettings.videoMotionBlur.set(0); BBSSettings.videoHeldFrames.set(1);
             BBSSettings.videoOpenFolderAfterExport.set(false); BBSSettings.videoPlaySoundAfterExport.set(false);

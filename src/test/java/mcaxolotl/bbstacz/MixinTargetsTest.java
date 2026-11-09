@@ -56,14 +56,19 @@ class MixinTargetsTest {
                                 }), name.getAsString() + " callback descriptor disagrees with " + selector);
                                 checked++;
                             }
-                        } else if (injection.desc.endsWith("/Redirect;")) {
+                        } else if (injection.desc.endsWith("/Redirect;") || injection.desc.endsWith("/ModifyArg;")) {
                             List<String> selectors = value(injection, "method");
                             AnnotationNode at = value(injection, "at"); String call = value(at, "target");
                             int semicolon = call.indexOf(';'), paren = call.indexOf('(');
                             String owner = call.substring(1, semicolon), invoked = call.substring(semicolon + 1);
                             assertTrue(findMethod(read(owner), invoked, new HashSet<>()), "Missing redirected call " + call);
                             String invokedName = call.substring(semicolon + 1, paren), descriptor = call.substring(paren);
-                            assertEquals(Type.getReturnType(descriptor), Type.getReturnType(method.desc), "Redirect return type disagrees with " + call);
+                            if (injection.desc.endsWith("/ModifyArg;")) {
+                                Integer index = value(injection, "index");
+                                assertNotNull(index); var argument = Type.getArgumentTypes(descriptor)[index];
+                                assertEquals(argument, Type.getReturnType(method.desc), "Modified argument return type disagrees with " + call);
+                                assertArrayEquals(new Type[]{argument}, Type.getArgumentTypes(method.desc), "Modified argument input disagrees with " + call);
+                            } else assertEquals(Type.getReturnType(descriptor), Type.getReturnType(method.desc), "Redirect return type disagrees with " + call);
                             for (String selector : selectors) {
                                 var candidates = findMethods(target, selector, new HashSet<>());
                                 assertTrue(candidates.stream().anyMatch(candidate -> {
