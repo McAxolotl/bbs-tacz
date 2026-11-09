@@ -8,6 +8,7 @@ import net.minecraft.client.model.PlayerModel;
 public final class ReviewProbe {
     public record Pose(NativeRenderScope scope, float rightX, float rightY, float rightZ, float leftX, float leftY, float leftZ, int texture) {}
     public static Consumer<Pose> playerDraw;
+    public static long liveGunDraws;
     public static void player(PlayerModel<?> model) {
         var scope = NativeRenderScope.current();
         if (playerDraw != null && scope != null && !scope.matrices)

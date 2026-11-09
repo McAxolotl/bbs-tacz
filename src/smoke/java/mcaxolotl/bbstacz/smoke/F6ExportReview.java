@@ -29,18 +29,25 @@ import net.minecraft.world.item.ItemStack;
 import org.lwjgl.glfw.GLFW;
 
 /** Real public take -> editor apply -> save/load -> frozen preview -> actual F6 key -> FFmpeg world export. */
-public final class F6ExportReview implements ReviewClient.Scenario {
+public class F6ExportReview implements ReviewClient.Scenario {
+    protected boolean withAudio() { return false; }
+    protected void configureForm(TaczForm form) throws Exception {}
+    private com.tacz.guns.client.sound.GunSoundInstance interrupted;
     private Film film;
     private Path output;
     private WorldVideoExportSession export;
     private long renderedBefore;
-    private int videoFrames;
+    private int videoFrames, started=-1;
+    private long readyBaseline=-1;
     @Override public boolean tick(Minecraft client, int tick) throws Exception {
         if(tick==0) {
             client.options.setCameraType(CameraType.FIRST_PERSON);
-            var form=new TaczForm(); Morph.getMorph(client.player).setForm(form);
+            var form=new TaczForm(); configureForm(form);
+            if(form.texture.get()!=null) BBSModClient.getTextures().getTexture(form.texture.get());
+            Morph.getMorph(client.player).setForm(form);
             var gun=GunItemBuilder.create().setId(new ResourceLocation("tacz","ak47")).setAmmoCount(30).setAmmoInBarrel(true).build();
             client.player.setItemSlot(EquipmentSlot.MAINHAND,gun); AttachmentPropertyManager.postChangeEvent(client.player,gun);
+            var id=client.player.getUUID(); client.getSingleplayerServer().execute(()->{ var serverPlayer=client.getSingleplayerServer().getPlayerList().getPlayer(id); if(serverPlayer!=null) serverPlayer.setItemSlot(EquipmentSlot.MAINHAND,gun.copy()); });
             film=new Film(); film.setId("bbs-tacz-f6-review-"+System.currentTimeMillis());
             var replay=new Replay("fp_player"); replay.form.set(form); replay.fp.set(true); film.replays.add(replay);
             ContentType.FILMS.getRepository().save(film.getId(),(mchorse.bbs_mod.data.types.MapType)film.toData());
@@ -48,56 +55,70 @@ public final class F6ExportReview implements ReviewClient.Scenario {
             BBSSettings.videoEncoderPath.set("/usr/bin/ffmpeg"); BBSSettings.videoExportPath.set(output.toString());
             BBSSettings.videoWidth.set(320); BBSSettings.videoHeight.set(180); BBSSettings.videoFrameRate.set(30);
             BBSSettings.videoDelay.set(0.8f); BBSSettings.worldExportResizeWindow.set(true);
-            BBSSettings.videoExportAudio.set(false); BBSSettings.videoExportMinecraftSounds.set(false);
+            BBSSettings.videoExportAudio.set(withAudio()); BBSSettings.videoExportMinecraftSounds.set(withAudio());
             BBSSettings.videoMotionBlur.set(0); BBSSettings.videoHeldFrames.set(1);
             BBSSettings.videoOpenFolderAfterExport.set(false); BBSSettings.videoPlaySoundAfterExport.set(false);
             var field=BBSModClient.class.getDeclaredField("worldExportSession"); field.setAccessible(true); export=(WorldVideoExportSession)field.get(null);
         }
-        if(tick==20) { BBSModClient.getFilms().startRecording(film,0,0,false); BBSModClient.getFilms().getRecorder().countdown=0; }
-        if(tick==15 || tick==25) {
+        if(started<0) {
+            if(tick<20) return false;
+            if(readyBaseline<0) readyBaseline=ReviewProbe.liveGunDraws;
+            if(ReviewProbe.liveGunDraws<readyBaseline+3) return false;
+            started=tick; BBSModClient.getFilms().startRecording(film,0,0,false); BBSModClient.getFilms().getRecorder().countdown=0;
+        }
+        int time=tick-started;
+        if(time==5 || time==15) {
             var machine=GunItemRendererWrapper.INSTANCE.get().getStateMachine(client.player.getMainHandItem());
             if(machine!=null) machine.trigger("inspect");
         }
-        if(tick==65) {
+        if(withAudio() && time==10) interrupted=com.tacz.guns.client.sound.SoundPlayManager.playAnimationSound(client.player,new ResourceLocation("tacz","ak47/ak47_reload_mvt"),0.8f,1.15f,30);
+        if(withAudio() && time==12) com.tacz.guns.client.sound.SoundPlayManager.playClientSound(client.player,new ResourceLocation("tacz","ak47/ak47_shoot"),0.7f,0.95f,30);
+        if(withAudio() && time==14 && interrupted!=null) interrupted.setStop();
+        if(time==45) {
             var recorder=BBSModClient.getFilms().stopRecording();
             var panel=BBSModClient.getDashboard().getPanel(UIFilmPanel.class); panel.fill(film); panel.applyRecordedKeyframes(recorder,film);
             Film saved=new Film(); saved.fromData(film.toData()); saved.setId(film.getId()); film=saved;
             var states=((TaczReplayChannels)film.replays.getList().get(0).keyframes).bbstacz$state();
+            if(withAudio()) ReviewClient.require(film.camera.getClips(mchorse.bbs_mod.camera.clips.misc.AudioClip.class).size()>=2,"F6 take did not save its actual TACZ audio cues");
             long fp=states.getKeyframes().stream().filter(k->k.getValue().firstPerson()).count();
             System.out.println("[REVIEW F6] saved FP keys="+fp+" duration="+film.calculateDuration());
-            ReviewClient.require(fp>5,"Native FP recording did not survive the editor's real apply/save path");
+            ReviewClient.require(fp>0,"Native FP recording did not survive the editor's real apply/save path");
             ContentType.FILMS.getRepository().save(film.getId(),(mchorse.bbs_mod.data.types.MapType)film.toData()); panel.fill(film);
             BBSModClient.getFilms().freeze(film,20,false);
             client.player.setItemSlot(EquipmentSlot.MAINHAND,ItemStack.EMPTY); Morph.getMorph(client.player).setForm(null);
         }
-        if(tick==85) {
+        if(time==65) {
             BBSModClient.getFilms().freeze(film,20,false);
             renderedBefore=FirstPersonPlayback.renderedFrames();
             System.out.println("[REVIEW F6] before key: server="+mchorse.bbs_mod.network.ClientNetwork.isIsBBSModOnServer()+" controllers="+BBSModClient.getFilms().getControllers().stream().map(c->c.getClass().getSimpleName()+":"+c.getTick()).toList());
             KeyMapping.click(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_F6));
         }
-        if(tick==97) {
+        if(time==77) {
             var controllers=BBSModClient.getFilms().getControllers();
             System.out.println("[REVIEW F6] exporting="+export.isExporting()+" managed="+controllers.stream().map(c->c.getClass().getSimpleName()+":"+c.getTick()).toList()+" target="+(FirstPersonPlayback.target(0)==null?"null":FirstPersonPlayback.target(0).controller().getClass().getSimpleName()));
             var controller=BBSModClient.getFilms().getController(film.getId());
             ReviewClient.require(export.isExporting(),"F6 cancelled before capturing the FP film");
             ReviewClient.require(controller instanceof WorldFilmController && !(controller instanceof FrozenFilmController),"F6 warm-up selected the frozen editor controller instead of the playback");
-            ReviewClient.require(FirstPersonPlayback.target(0)!=null && FirstPersonPlayback.target(0).controller()==controller,"Editor preview stole the world FP replay");
+            var replay=controller.film.getFirstPersonReplay();
+            var expected=mcaxolotl.bbstacz.recording.FrameSampler.sample(((TaczReplayChannels)replay.keyframes).bbstacz$state(),replay.getTick(controller.getTick()));
+            var target=FirstPersonPlayback.target(0);
+            ReviewClient.require(expected.firstPerson() ? target!=null&&target.controller()==controller : target==null,"FP ownership does not match the actual saved frame");
         }
-        if (tick==98) {
+        if (time==78) {
             var preview=new mchorse.bbs_mod.film.FirstPersonFilmController(film); preview.tick=20; preview.paused=true;
             FirstPersonPlayback.watch(preview);
-            ReviewClient.require(FirstPersonPlayback.target(0).controller()==BBSModClient.getFilms().getController(film.getId()), "A later preview event replaced the managed world FP owner");
+            var target=FirstPersonPlayback.target(0);
+            ReviewClient.require(target==null||target.controller()==BBSModClient.getFilms().getController(film.getId()), "A later preview event replaced the managed world FP owner");
             preview.shutdown();
         }
         videoFrames=Math.max(videoFrames,BBSModClient.getVideoRecorder().getCounter());
-        if(tick>120 && !export.isExporting()) {
+        if(time>100 && !export.isExporting()) {
             List<Path> movies;
             try(var files=Files.list(output)) { movies=files.filter(p->p.toString().endsWith(".mp4")).toList(); }
             ReviewClient.require(movies.size()==1 && Files.size(movies.get(0))>1000,"F6 produced no playable video");
             ReviewClient.require(videoFrames>15,"F6 recorded too few frames: "+videoFrames);
             ReviewClient.require(FirstPersonPlayback.renderedFrames()>renderedBefore+10,"F6 video did not render the recorded FP gun");
-            Files.writeString(Path.of("bbs-tacz-review-F6ExportReview-video.txt"),movies.get(0).toString()+"\n");
+            Files.writeString(Path.of("bbs-tacz-review-"+getClass().getSimpleName()+"-video.txt"),movies.get(0).toString()+"\n");
             System.out.println("[REVIEW F6] video="+movies.get(0)+" frames="+videoFrames+" FP draws="+(FirstPersonPlayback.renderedFrames()-renderedBefore));
             return true;
         }

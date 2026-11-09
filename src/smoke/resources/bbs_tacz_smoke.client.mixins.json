@@ -7,7 +7,8 @@
     "MountProbeMixin",
     "ArmProbeMixin",
     "HandNeutralProbeMixin",
-    "ReviewPoseProbeMixin"
+    "ReviewPoseProbeMixin",
+    "ReviewGunReadyMixin"
   ],
   "injectors": {
     "defaultRequire": 1
