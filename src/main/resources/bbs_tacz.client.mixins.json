@@ -50,6 +50,7 @@
     "NativeVideoSoundCaptureMixin",
     "NativeVideoSoundEndMixin",
     "ClockedGunSchedulingMixin",
+    "RecordedGunInputMixin",
     "CtrlPlaybackMixin",
     "CtrlFirstFrameMixin"
   ],

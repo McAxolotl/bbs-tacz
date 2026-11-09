@@ -12,6 +12,7 @@ import net.minecraft.world.entity.LivingEntity;
 /** Server notification only. Projectiles have separate clips, so a burst cannot be emitted twice. */
 public final class TaczFireActionClip extends ItemActionClip {
     @Override public void applyAction(LivingEntity actor, SuperFakePlayer player, Film film, Replay replay, int tick) {
+        if (mcaxolotl.bbstacz.recording.ReplayActionScope.seeking()) return;
         if (actor != null && !actor.level().isClientSide) NetworkHandler.sendToTrackingEntity(new ServerMessageGunFire(actor.getId(), itemStack.get().copy()), actor);
     }
     @Override protected Clip create() { return new TaczFireActionClip(); }

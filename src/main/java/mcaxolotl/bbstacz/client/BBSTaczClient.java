@@ -31,6 +31,10 @@ public final class BBSTaczClient implements BBSAddonMod {
         FilmEvents.CREATED.register(controller -> {
             if (controller instanceof mchorse.bbs_mod.film.WorldFilmController world && !(controller instanceof mchorse.bbs_mod.film.Recorder)
                 && F6Starts.holdInitialFrame(controller.film.getId())) { world.paused=true; world.tick=0; CtrlPlaybackStarts.ready(world); }
+            if(controller instanceof mchorse.bbs_mod.film.WorldFilmController && !(controller instanceof mchorse.bbs_mod.film.Recorder)
+                && !(controller instanceof mchorse.bbs_mod.film.FrozenFilmController) && controller.film.getFirstPersonReplay()!=null
+                && controller.film.getFirstPersonReplay().form.get() instanceof TaczForm && Minecraft.getInstance().player!=null)
+                com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator.fromLocalPlayer(Minecraft.getInstance().player).getDataHolder().cancelShootFutures();
             FirstPersonPlayback.watch(controller); ReplayClock.watch(controller);
         });
         FilmEvents.TICK_AFTER.register((controller, tick) -> {

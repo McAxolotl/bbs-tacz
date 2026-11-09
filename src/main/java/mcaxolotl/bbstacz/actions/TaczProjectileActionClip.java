@@ -35,6 +35,7 @@ public final class TaczProjectileActionClip extends ActionClip {
         return clip;
     }
     @Override public void applyAction(LivingEntity actor, SuperFakePlayer player, Film film, Replay replay, int tick) {
+        if (mcaxolotl.bbstacz.recording.ReplayActionScope.seeking()) return;
         if (actor == null) { applyPositionRotation(player, replay, tick); actor = player; }
         if (actor.level().isClientSide || payload.get().getByteArray("spawn").length == 0) return;
         MapType map = payload.get();
@@ -51,11 +52,15 @@ public final class TaczProjectileActionClip extends ActionClip {
         bullet.setPos(actor.getX() + offset.x, actor.getY() + offset.y, actor.getZ() + offset.z);
         Vector3f velocity = rotation.transform(bullet.getDeltaMovement().toVector3f());
         bullet.setDeltaMovement(velocity.x, velocity.y, velocity.z);
-        bullet.setYRot(bullet.getYRot() + actor.getYRot() - map.getFloat("owner_yaw"));
-        bullet.setXRot(bullet.getXRot() + actor.getXRot() - map.getFloat("owner_pitch"));
+        // Bullet pitch is positive upwards, unlike the player's view pitch. Adding Euler
+        // differences is not equivalent to the 3D velocity rotation (especially across +/-180).
+        bullet.setYRot((float)Math.toDegrees(Math.atan2(velocity.x,velocity.z)));
+        bullet.setXRot((float)Math.toDegrees(Math.atan2(velocity.y,Math.hypot(velocity.x,velocity.z))));
+        bullet.yRotO=bullet.getYRot(); bullet.xRotO=bullet.getXRot();
+        bullet.xo=bullet.xOld=bullet.getX(); bullet.yo=bullet.yOld=bullet.getY(); bullet.zo=bullet.zOld=bullet.getZ();
         ((KineticBulletAccess) bullet).bbstacz$restoreBallistics(map, bullet.position());
         // Native entity tick, collision, damage, penetration, ignition, fuse and explosion logic remain TACZ's.
-        actor.level().addFreshEntity(bullet);
+        if (actor.level().addFreshEntity(bullet)) mcaxolotl.bbstacz.recording.ReplayProjectiles.add(film,bullet);
     }
     private static Quaternionf view(float pitch, float yaw) {
         return new Quaternionf().rotationY((float) Math.toRadians(-yaw)).rotateX((float) Math.toRadians(pitch));

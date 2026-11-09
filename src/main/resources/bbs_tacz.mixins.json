@@ -10,7 +10,8 @@
     "ActorDimensionsMixin",
     "PlayerDimensionsMixin",
     "PlayerEyeMixin",
-    "RecordedCrawlValidationMixin"
+    "RecordedCrawlValidationMixin",
+    "ActionPlayerSeekAccess"
   ],
   "injectors": {
     "defaultRequire": 1

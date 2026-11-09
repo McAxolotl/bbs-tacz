@@ -29,7 +29,7 @@ public final class BBSTaczAddon implements BBSAddonMod {
     public BBSTaczAddon() {
         BBSApi.requireVersion(MOD_ID, 2);
         mcaxolotl.bbstacz.network.F6ServerStart.register();
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> PhysicalCrawl.clearServer());
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> { mcaxolotl.bbstacz.recording.ReplayProjectiles.clearAll(); PhysicalCrawl.clearServer(); });
         ServerEntityEvents.ENTITY_LOAD.register((entity, world) -> {
             if (entity instanceof EntityKineticBullet bullet && bullet.getOwner() instanceof ServerPlayer owner)
                 BBSMod.getActions().addAction(owner, () -> TaczProjectileActionClip.capture(bullet, owner));

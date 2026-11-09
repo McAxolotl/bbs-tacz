@@ -34,6 +34,7 @@ public class HotkeyWorkflowReview implements ReviewClient.Scenario {
     protected Path output;
     protected int phase, phaseTick, frames;
     private long drawnBefore;
+    protected boolean ctrlFinished(Minecraft client,int elapsed) { return elapsed==ctrlTicks(); }
     protected int ctrlTicks() { return 10; }
     protected void verifyCtrl(Minecraft client) throws Exception {}
     protected void verifyVideo(Minecraft client,Path video) throws Exception {}
@@ -78,8 +79,8 @@ public class HotkeyWorkflowReview implements ReviewClient.Scenario {
                 if (FirstPersonPlayback.target(0)!=null) { phase=5; phaseTick=tick; }
                 else ReviewClient.require(tick-phaseTick<30,"Ctrl selected no recorded FP gun (tick="+controller.getTick()+")");
             } else ReviewClient.require(tick-phaseTick<60,"Ctrl failed to start world playback");
-        } else if (phase==5 && tick-phaseTick==ctrlTicks()) {
-            verifyCtrl(client); F4ClockReview.key(GLFW.GLFW_KEY_RIGHT_CONTROL); phase=6; phaseTick=tick;
+        } else if (phase==5 && ctrlFinished(client,tick-phaseTick)) {
+            verifyCtrl(client); if(BBSModClient.getFilms().getController(film.getId())!=null) F4ClockReview.key(GLFW.GLFW_KEY_RIGHT_CONTROL); phase=6; phaseTick=tick;
         } else if (phase==6 && tick-phaseTick==10) {
             ReviewProbe.exportFilm=film.getId(); ReviewProbe.firstExportTick=-1; drawnBefore=FirstPersonPlayback.renderedFrames();
             F4ClockReview.key(GLFW.GLFW_KEY_F6); phase=7; phaseTick=tick;

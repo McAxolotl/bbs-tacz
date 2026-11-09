@@ -97,6 +97,15 @@ public final class FirstPersonPlayback {
         FrameSnapshot frame = mcaxolotl.bbstacz.recording.FrameSampler.sample(channel, tick);
         return frame.firstPerson() ? new Target(current, replay, tick, frame) : null;
     }
+    public static boolean ownsPlayer() {
+        if(CommandJournal.recorder()!=null || Minecraft.getInstance().player==null || BBSModClient.getFilms()==null) return false;
+        for(var controller:BBSModClient.getFilms().getControllers()) {
+            var replay=controller.film.getFirstPersonReplay();
+            if(controller instanceof WorldFilmController && !(controller instanceof Recorder) && !(controller instanceof FrozenFilmController)
+                && !controller.hasFinished() && replay!=null && replay.enabled.get() && replay.form.get() instanceof mcaxolotl.bbstacz.forms.TaczForm) return true;
+        }
+        return false;
+    }
     public static long renderedFrames() { return renderedFrames; }
     public static boolean isRendering() { return rendering != null; }
     public static FrameSnapshot frame() { return rendering; }

@@ -10,6 +10,8 @@
     "ReviewPoseProbeMixin",
     "ReviewGunReadyMixin",
     "F6CaptureProbeMixin",
+    "ProjectileRenderProbeMixin",
+    "ProjectileFrameProbeMixin",
     "ExportSlowFrameProbeMixin",
     "ServerShotProbeMixin"
   ],
