@@ -30,6 +30,8 @@ import org.lwjgl.glfw.GLFW;
 
 /** Real public take -> editor apply -> save/load -> frozen preview -> actual F6 key -> FFmpeg world export. */
 public class F6ExportReview implements ReviewClient.Scenario {
+    protected void beforeF6(Film film,UIFilmPanel panel,Minecraft client) throws Exception {}
+    protected Film exportFilm(Film film) { return film; }
     protected boolean withAudio() { return false; }
     protected float warmupDelay() { return 0.8f; }
     protected void configureForm(TaczForm form) throws Exception {}
@@ -84,11 +86,13 @@ public class F6ExportReview implements ReviewClient.Scenario {
             long fp=states.getKeyframes().stream().filter(k->k.getValue().firstPerson()).count();
             System.out.println("[REVIEW F6] saved FP keys="+fp+" duration="+film.calculateDuration());
             ReviewClient.require(fp>0,"Native FP recording did not survive the editor's real apply/save path");
+            film=exportFilm(film);
             ContentType.FILMS.getRepository().save(film.getId(),(mchorse.bbs_mod.data.types.MapType)film.toData()); panel.fill(film);
             BBSModClient.getFilms().freeze(film,20,false);
             client.player.setItemSlot(EquipmentSlot.MAINHAND,ItemStack.EMPTY); Morph.getMorph(client.player).setForm(null);
         }
         if(time==65) {
+            beforeF6(film,BBSModClient.getDashboard().getPanel(UIFilmPanel.class),client);
             BBSModClient.getFilms().freeze(film,20,false);
             ReviewProbe.exportFilm=film.getId(); ReviewProbe.firstExportTick=-1;
             renderedBefore=FirstPersonPlayback.renderedFrames();

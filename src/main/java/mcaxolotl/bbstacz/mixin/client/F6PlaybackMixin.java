@@ -7,6 +7,7 @@ import mcaxolotl.bbstacz.network.F6ServerStart;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.Films;
 import mchorse.bbs_mod.film.WorldFilmController;
@@ -51,6 +52,10 @@ public abstract class F6PlaybackMixin {
     @Redirect(method = "start", at = @At(value = "INVOKE", target = "Lmchorse/bbs_mod/film/Films;playFilm(Ljava/lang/String;Z)V"))
     private void bbstacz$serverHold(String id, boolean camera) {
         if (bbstacz$pendingFilm != null && ClientNetwork.isIsBBSModOnServer()) {
+            // The editor's latest FP flag/form/channels may not be on disk yet. The native
+            // chunked SAVE packets precede START on the same connection/server task queue.
+            // Keep BBS's repository permission checks instead of adding an unbounded payload.
+            ContentType.FILMS.getRepository().save(id,film.toData().asMap());
             var buffer=PacketByteBufs.create(); buffer.writeUtf(id); ClientPlayNetworking.send(F6ServerStart.ID,buffer);
         } else Films.playFilm(id,camera);
     }
