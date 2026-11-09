@@ -81,3 +81,11 @@
 - 复现：修复前原生测试写出 FAIL 后关闭 Minecraft，Gradle 仍返回 BUILD SUCCESSFUL；先前所有失败日志均可对照这一现象。
 - 修复：runClient 在 review/smoke 模式强制检查结果文件；另提供 `verifyReview` 检查已有原生报告。场景名限制为简单 Java 类名，避免不安全文件路径。
 - 验证：失败报告使任务非零退出；既有成功报告返回 PASS；不安全场景名在配置阶段被拒绝。最后完整原生 smoke 为 `PASS 66`，不以单纯 Gradle 退出码替代原生结果。
+
+## F6 首帧与完整时长
+
+- 定量复现：成功生成视频不代表没有漏帧。新增实际 readback 探针后，视频首帧来自影片 tick `10`，45 tick 原片被缩短，`F6NoDelayExportReview` 在首帧/总长度断言失败。
+- 根因：从服务器收到影片开始，到预热和 FFmpeg 准备结束，再到首次 texture readback 之间，原生客户端/服务端时钟已经推进。仅等待 controller 存在或开启录制仍然太晚。
+- 修复：通过有 BBS 权限校验的附属启动包在同一服务端任务中创建并立即暂停原生 NORMAL ActionPlayer，尚未执行第一个动作 tick；客户端在原生回复的构造事件中也保持 tick 0。首次实际视频 readback 后才恢复客户端及原生服务端 PLAY。全过程不使用倒退/重放动作，避免重复发射弹丸。取消、断线及失败的视频 sink 清理门控和服务端状态。
+- 验证：首帧由实际 `VideoRecorder.recordFrame` 探针观察，修复后为 tick `0`；45 tick 原片得到 67 个 captured frame，而非旧的 52。预热期间双端均暂停在 0。所选皮肤及 AAC 解码继续通过；提前取消、重试、活动取消与模拟首帧读取失败不遗留暂停 controller。4 项启动票据与 3 项首帧门控单测通过，完整 smoke 仍为 `PASS 66`。
+- 部署：使用该首帧同步功能需要客户端与服务器安装同一 BBS TACZ 构建；视频帧数允许原生 BBS PBO/编码端的少量末端缓冲差异，不通过倒退真实弹道时间补帧。

@@ -30,6 +30,7 @@
     "RecordedHandPassMixin",
     "F6PlaybackMixin",
     "F6PlayResponseMixin",
+    "F6FirstFrameMixin",
     "AudioTakeMixin",
     "NativeSoundRecordMixin",
     "NativeSoundStopMixin",

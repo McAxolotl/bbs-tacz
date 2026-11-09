@@ -90,6 +90,7 @@ public class F6ExportReview implements ReviewClient.Scenario {
         }
         if(time==65) {
             BBSModClient.getFilms().freeze(film,20,false);
+            ReviewProbe.exportFilm=film.getId(); ReviewProbe.firstExportTick=-1;
             renderedBefore=FirstPersonPlayback.renderedFrames();
             System.out.println("[REVIEW F6] before key: server="+mchorse.bbs_mod.network.ClientNetwork.isIsBBSModOnServer()+" controllers="+BBSModClient.getFilms().getControllers().stream().map(c->c.getClass().getSimpleName()+":"+c.getTick()).toList());
             KeyMapping.click(InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_F6));
@@ -100,6 +101,13 @@ public class F6ExportReview implements ReviewClient.Scenario {
             var controller=BBSModClient.getFilms().getController(film.getId());
             ReviewClient.require(export.isExporting(),"F6 cancelled before capturing the FP film");
             ReviewClient.require(controller instanceof WorldFilmController && !(controller instanceof FrozenFilmController),"F6 warm-up selected the frozen editor controller instead of the playback");
+            if(export.isWarmingUp()) {
+                ReviewClient.require(controller.getTick()==0 && controller.paused,"Client clock advanced during F6 warm-up");
+                boolean server=client.getSingleplayerServer().submit(()->{
+                    var action=mchorse.bbs_mod.BBSMod.getActions().getPlayer(film.getId()); return action!=null&&action.tick==0&&!action.playing;
+                }).get(5,java.util.concurrent.TimeUnit.SECONDS);
+                ReviewClient.require(server,"Server action clock advanced before the first captured frame");
+            }
             var replay=controller.film.getFirstPersonReplay();
             var expected=mcaxolotl.bbstacz.recording.FrameSampler.sample(((TaczReplayChannels)replay.keyframes).bbstacz$state(),replay.getTick(controller.getTick()));
             var target=FirstPersonPlayback.target(0);
@@ -117,7 +125,9 @@ public class F6ExportReview implements ReviewClient.Scenario {
             List<Path> movies;
             try(var files=Files.list(output)) { movies=files.filter(p->p.toString().endsWith(".mp4")).toList(); }
             ReviewClient.require(movies.size()==1 && Files.size(movies.get(0))>1000,"F6 produced no playable video");
-            ReviewClient.require(videoFrames>15,"F6 recorded too few frames: "+videoFrames);
+            System.out.println("[REVIEW F6] first captured tick="+ReviewProbe.firstExportTick+" expected duration="+film.calculateDuration());
+            ReviewClient.require(ReviewProbe.firstExportTick==0,"F6 skipped the opening ticks before the first recorded frame");
+            ReviewClient.require(videoFrames>=(int)Math.floor(film.calculateDuration()*30d/20)-3,"F6 shortened the film: frames="+videoFrames);
             ReviewClient.require(FirstPersonPlayback.renderedFrames()>renderedBefore+10,"F6 video did not render the recorded FP gun");
             Files.writeString(Path.of("bbs-tacz-review-"+getClass().getSimpleName()+"-video.txt"),movies.get(0).toString()+"\n");
             System.out.println("[REVIEW F6] video="+movies.get(0)+" frames="+videoFrames+" FP draws="+(FirstPersonPlayback.renderedFrames()-renderedBefore));

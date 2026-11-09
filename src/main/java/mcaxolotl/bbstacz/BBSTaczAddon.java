@@ -28,6 +28,7 @@ public final class BBSTaczAddon implements BBSAddonMod {
     public static final Logger LOGGER = LoggerFactory.getLogger("BBS TACZ");
     public BBSTaczAddon() {
         BBSApi.requireVersion(MOD_ID, 2);
+        mcaxolotl.bbstacz.network.F6ServerStart.register();
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> PhysicalCrawl.clearServer());
         ServerEntityEvents.ENTITY_LOAD.register((entity, world) -> {
             if (entity instanceof EntityKineticBullet bullet && bullet.getOwner() instanceof ServerPlayer owner)

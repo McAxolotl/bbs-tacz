@@ -44,6 +44,11 @@ public final class F6CancelReview implements ReviewClient.Scenario {
         if(tick==65) {
             boolean server=client.getSingleplayerServer().submit(()->BBSMod.getActions().getPlayer(film.getId())!=null).get(5,java.util.concurrent.TimeUnit.SECONDS);
             ReviewClient.require(!export.isExporting()&&!server&&!BBSModClient.getFilms().has(film.getId()),"Cancelling an active F6 export left a controller or restarted the server film");
+        }
+        if(tick==80) { ReviewProbe.failFirstFrame=true; ReviewClient.require(export.start(film.getId(),film),"Failure-path export could not start"); }
+        if(tick==115) {
+            boolean server=client.getSingleplayerServer().submit(()->BBSMod.getActions().getPlayer(film.getId())!=null).get(5,java.util.concurrent.TimeUnit.SECONDS);
+            ReviewClient.require(!export.isExporting()&&!server&&!BBSModClient.getFilms().has(film.getId())&&!ReviewProbe.failFirstFrame,"Failed first readback left the client or server timeline locked");
             return true;
         }
         return false;

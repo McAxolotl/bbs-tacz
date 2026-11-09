@@ -28,7 +28,11 @@ public final class BBSTaczClient implements BBSAddonMod {
     }
     public BBSTaczClient() {
         TaczConfig.load();
-        FilmEvents.CREATED.register(controller -> { FirstPersonPlayback.watch(controller); ReplayClock.watch(controller); });
+        FilmEvents.CREATED.register(controller -> {
+            if (controller instanceof mchorse.bbs_mod.film.WorldFilmController world && !(controller instanceof mchorse.bbs_mod.film.Recorder)
+                && F6Starts.holdInitialFrame(controller.film.getId())) { world.paused=true; world.tick=0; }
+            FirstPersonPlayback.watch(controller); ReplayClock.watch(controller);
+        });
         FilmEvents.TICK_AFTER.register((controller, tick) -> {
             FirstPersonPlayback.watch(controller); ReplayClock.watch(controller);
             syncCameraCrawl();
@@ -54,7 +58,7 @@ public final class BBSTaczClient implements BBSAddonMod {
     @Subscribe public void editors(RegisterFormEditorsEvent event) { event.register(TaczForm.class, UITaczForm::new); }
     @Subscribe public void palette(RegisterFormSectionsEvent event) { event.register(TaczFormSection::new); }
     public static void clear() {
-        F6Starts.clear(); RecordedAudio.clear(); SkinTextureBridge.clear(); LiveCapture.clear(); CommandJournal.clear(); ActorAnimations.clear(); FirstPersonPlayback.clear(); ThirdPersonPose.clear();
+        F6FrameGate.clear(); F6Starts.clear(); RecordedAudio.clear(); SkinTextureBridge.clear(); LiveCapture.clear(); CommandJournal.clear(); ActorAnimations.clear(); FirstPersonPlayback.clear(); ThirdPersonPose.clear();
         NativeRenderScope.clear(); MirrorParticles.clear(); ReplayClock.clear(); ShellHistory.clear(); ThirdPersonShells.clear(); ShellIds.clear(); PhysicalCrawl.clearClient(); ReplayBindings.clear();
     }
 }
