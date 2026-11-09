@@ -2,6 +2,8 @@
 
 审查日期：2026-11-09。修复分别提交，版本固定为 `v1.0.0`。
 
+> 后续专项已将新录制的枪声方案替换为 `bbs_tacz:sounds` 原生声音命令通道，不再生成 WAV/AudioClip。本文件保留原始复现与历史实现记录；当前 Alt/Ctrl、F4/F6、时钟、弹道和原生音效的结果以 [回放导出专项审查](REPLAY_EXPORT_REVIEW.md) 为准。
+
 ## 版本锁定
 
 - 复现：原 `mod_version=1.1.0`，Gradle 还自动附加 Minecraft 后缀；`VersionLockTest` 在修改前失败。

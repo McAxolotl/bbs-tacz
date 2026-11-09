@@ -1,26 +1,55 @@
 # 验证与回归（独立 TACZ 形态）
 
-## 最近一次完整结果
+## 最近一次交付结果
 
-2026-11-09，在上述固定发布包组合下：**40 项 JUnit 检查通过，原生 smoke 报告为 `PASS 66`**。实际生成的站立/持枪、背部/腰部装备和爬行图片已目视检查。干净构建另外执行发布 JAR 审计。
+2026-11-09：**68 项 JUnit、22 个原生专项、完整 smoke `PASS 66`**，发布 JAR 审计通过。完整脚本发现空影片弹丸边界后进行了修复；最终代码又完整运行 smoke，并重测弹道与两条五枪 F4/F6 导出链路，所有关联复测及实际 MP4 解码通过。具体日志、媒体数据及验证边界见 [专项交付记录](REPLAY_EXPORT_REVIEW.md)。
 
-## 本轮专项原生复现
+## 完整串行复测入口
 
-每项在修改前复现失败，在修改后用相同链路验证；结果与根因见 [完整审查记录](REVIEW_FIXES.md)。使用 `./gradlew runClient -Preview=<场景类名>`，失败或缺少原生报告会使 Gradle 失败。`verifyReview` 可检查已有报告。
+开发环境使用 Java 21 启动 Gradle，Minecraft/LWJGL 使用 Java 17；需要真实显示环境与 `/usr/bin/ffmpeg`、`/usr/bin/ffprobe`。固定发布包为 BBS 2.7、TACZ Refabricated 1.0.0-forge1.2.0+mc1.20.1、PA 1.0.2-rc1+1.20（TACZ 内嵌 SBM 2.6.2）。
+
+```bash
+scripts/verify-replays.sh
+```
+
+脚本先干净构建，再**串行**运行 22 个原生专项、完整 smoke 和实际 MP4 解码。锁定同一宿主上的测试脚本，并拒绝在已有开发 Minecraft 运行时重编译/启动第二个客户端。日志写入 `run/native-review-logs/<时间>/`，不会被 `clean` 或 `/tmp` 清理删除。单项入口：
+
+```bash
+./gradlew runClient -Preview=场景类名
+./gradlew runClient -Psmoke
+python3 scripts/audit-replay-media.py
+```
+
+报告缺失或非 `PASS` 会使 Gradle 失败。`verifyReview -Preview=场景类名` 仅检查已有报告，**不等于重新运行测试**。本轮最终数据、根因及提交范围见 [回放导出专项审查](REPLAY_EXPORT_REVIEW.md)；形态/皮肤原始复现见 [历史审查记录](REVIEW_FIXES.md)。
+
+## 原生专项覆盖
 
 | 场景类名 | 重点 |
 | --- | --- |
 | `ThirdPersonArmsReview` | 实际 ModelPart 绘制时的左右臂；未 tick / 空身体快照 |
 | `FirstPersonSkinReview` | 有/无待刷新外部材质、手臂与袖层、重载与 GL 所有权 |
-| `PlaybackAudioReview` | 公共录制 API / 序列化 / PCM；原生世界 context 与 OpenAL 的 play/pause/seek/resume/stop |
+| `PlaybackAudioReview` | 原生声音序列化、不产生 AudioClip；OpenAL play/pause/seek/resume/stop；同 tick 暂停保留 voice |
 | `AudioRetakeReview` | 禁止监听旧 take，仅覆盖自身区间并保留头/尾、用户及其他 replay 音轨 |
 | `NativeSoundExportReview` | 固定 BBS 发布包的 TACZ OGG 路径与 48 kHz 原生混音对照 |
+| `NativeInterruptionExportReview` | 原生 one-shot 停止帧；被打断换弹声音的停止后 PCM 为零 |
 | `HiddenPreviewReview` | 隐藏标签不接管世界摄像机，可见暂停预览正常 |
 | `CrawlOwnershipReview` | 无关 controller 关闭不站起；多 owner 与集成客户端/服务端身份隔离 |
-| `F6ExportReview` | 真实 F6 按键，公开录制→应用/保存→世界播放→FFmpeg，首帧 tick 0 / 完整时长 / 双端预热暂停 |
-| `F6AudioExportReview` | 同一 F6 链路的所选皮肤、H.264、AAC 非零解码与原生声音后混音 |
-| `F6NoDelayExportReview` | 用户视频延迟为 0 的异步启动 |
-| `F6CancelReview` | 回复前取消、取消后立即重试、已播放后的取消、模拟首帧读取失败，无 client/server 残留 |
+| `F4ClockReview` | F4 固定视频时间 / held frames；世界与原生枪械时钟一致 |
+| `F4BurstClockReview` | 160ms 慢帧三连发；66ms 原生节奏不坍缩，服务器实际射击成功 |
+| `CtrlStartupReview` | 客户端首帧与服务端动作的 Ctrl 启动握手 |
+| `ActionTailDurationReview` | 姿态之后的 TACZ 动作计入时长；序列化 / 禁用动作 |
+| `ActionLifecycleReview` | 原生 tick 中断线/停止回调重入；停止期间创建替代播放；原生借用装备归还 |
+| `HotkeyWorkflowReview` | 默认右 Alt→右 Ctrl→F6 链路；停录后不手动调用测试专用 apply/save |
+| `F6ExportReview` | F6 首帧 tick 0 / 完整时长 / 双端预热暂停 / FFmpeg 导出 |
+| `F6AudioExportReview` | 所选皮肤像素、H.264、AAC 非零解码与原生声音后混音 |
+| `F6NoDelayExportReview` | 视频延迟 0 的异步启动 |
+| `F6DraftExportReview` | 服务端旧片 fp=false，只修改当前编辑器 fp=true 而不手动保存，仍正确导出 |
+| `F6CancelReview` | 回复前取消、立即重试、播放后取消、首帧读取失败，无 client/server 残留 |
+| `ProjectileReplayReview` | 四组 yaw/pitch 实射；Alt/Ctrl/F6 数量一致、动作游标、seek 清理、实时输入隔离、每帧弹道唯一及朝向 |
+| `MultiGunWorkflowReview` | AK47/M4A1/Glock17/AA12/RPG7，多状态打断与改装组合；Alt/Ctrl/F6、原生声音及各阶段弹道绘制 |
+| `F4MultiGunExportReview` | 同一五枪组合在实时 F4 中实际射击；服务器成功、固定时钟、原生音源、捕获帧内弹道唯一 |
+
+`ReviewHealthFailureReview` 是**故意失败的负对照**，不在正常 22 项串行列表中：它写入标明为测试注入的崩溃标记。测试入口及 Gradle 必须拒绝结果，不能因为先前写了 PASS 就忽略退出阶段的新崩溃。普通专项也会在提前断线时失败，并在退出测试世界后确认结果。
 
 ## 自动化测试覆盖什么
 
@@ -33,7 +62,10 @@
 - 对安装发布包检查所有注册 Inject/Redirect/ModifyArg/Accessor/Invoker 的目标、回调描述符和重定向调用点。
 - 独立形态直接继承 `Form`、身份/必需 PA 版本。
 - `v1.0.0` 版本锁、指定图标的原字节 SHA-256。
-- 8 项 PCM 重采样/声道/亚 tick/停止/溢出检查，3 项弱对象身份键检查，4 项 F6 回复顺序/取消/初始暂停/清理检查、3 项首帧门控检查。
+- 8 项 PCM 重采样/声道/亚 tick/停止/溢出、3 项弱对象身份键、4 项 F6 回复/取消、3 项首帧门控检查。
+- 3 项导出时钟边界/held frames、3 项时钟弹簧积分、4 项任务周期/取消/异常/清理检查。
+- 3 项原生声音 JSON 参数/停止/组合/坏数据、3 项瞬时动作回拨隔离、5 项声音暂停/定位游标检查。
+- 6 项动作注册表的回调重入、并发清理、条目身份、迭代器删除和列表基本操作检查；无影片上下文弹丸生命周期回归。
 
 ### `./gradlew runClient -Psmoke`
 
@@ -60,6 +92,10 @@
 
 检查 McAxolotl / BBS TACZ / 包和版本、新形态与必需后端；检查每个 Mixin class 存在；拒绝旧兼容 backend、上游/嵌入依赖或 smoke 代码。
 
+### `python3 scripts/audit-replay-media.py`
+
+默认读取本次 F4/F6 五枪组合和 F6 所选皮肤/音频的 `*-video.txt`，完整解码视频并检查 H.264/AAC、30 FPS、帧数/时长、音视频时长差与非零 PCM 音轨。**仅有 AAC 头部不能证明存在声音**。音源身份由原生专项检查 `tacz_sounds/` 资源及没有新增 AudioClip；媒体脚本不以音频波形反推来源。
+
 ## 必须区分：数据/矩阵/绘制成功 ≠ 所有场景逐像素验收
 
 以下表是进一步的人工/影片导出验收矩阵，**不是全部已经通过的名单**。对每一项固定同一枪包、枪械、配件和手臂宽度，对比实时游玩与录制；检查正常播放、暂停、回拖/前拖和从中途开始。
@@ -79,7 +115,7 @@
 | 多人同枪的 TP 抛壳 | 出生原点、随机速度、暂停/中途跳转，人物剔除/换枪 |
 | 30/60/更高帧率的导出 | 求值采样频率、暂停不老化、重复绘制不触发 gameplay |
 | shader / Sodium / AR 等组合 | 单独验证 stencil、透明、VBO/手部 pass；无光影成功不代替光影验收 |
-| TACZ 声音与重录 | 开火/换弹/检视/配件与打断；导出音频开关、文件资产分享、仅覆盖本 replay 区间 |
+| TACZ 声音与重录 | 开火/换弹/检视/配件与打断；原生资源命令、导出音频开关、旧 WAV 兼容、仅覆盖本 replay 区间 |
 | F6 取消与多影片 | 等待回复时取消、零视频延迟、关闭无关影片、重新启动，不覆盖其他影片 |
 | 结束/断线/切世界 | 恢复 pose/swimming、共享模型、PA 层、muzzle 与 FOV cache |
 

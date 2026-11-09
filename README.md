@@ -55,7 +55,8 @@ Minecraft **1.20.1 / Fabric** 的 **BBS FS × TACZ-Refabricated** 附属模组�
 | 枪火贴图、Snowstorm 粒子、弹壳 | 保存发射年龄、随机旋转/速度、粒子位置/UV/透明度；回放不重新抽随机数 |
 | 所选第一人称皮肤 | 原生纹理别名绑定；手臂、袖层、宽/细模型使用影片形态所选皮肤，不依赖刷新顺序 |
 | TACZ 音效 | 在 `bbs_tacz:sounds` 通道保存原生资源、最终音高/音量与停止事件；重放 TACZ 原生声音实例，F4/F6 通过 Minecraft 声音捕获混音，不生成影片音频剪辑 |
-| F6 播放并录制 | 清理同 ID 的编辑器预览、等待服务端回复；零延迟也等待实际播放和 tick 0 首帧读取；服务端初始化暂停，不通过倒退动作补帧；取消/重试不会复活旧请求 |
+| F6 播放并录制 | 先同步当前编辑器影片再启动；清理同 ID 的旧预览并等待双端首帧；零延迟、取消与重试均保留门控，不用回拨动作补帧 |
+| Alt/Ctrl 与视频时钟 | Alt 的枪械动作按姿态录制游标记时；Ctrl 跟随服务端动作时钟；F4/F6 的枪械、连发和物理晃动使用同一固定视频时间 |
 | 暂停与跳转 | 根据影片时间采样；不依赖真实时间推进 Lua/粒子模拟 |
 | F5 录制时补充 FP 数据 | 离屏求值和独立 FP 粒子系统；不会把镜像烟雾再次投递到实际世界 |
 | 第三人称抛壳 | 根据出生时刻还原历史人物、作者姿态、锚点、原生物品及抛壳骨骼矩阵；换枪或人物被剔除后仍更新寿命 |
@@ -69,7 +70,7 @@ Minecraft **1.20.1 / Fabric** 的 **BBS FS × TACZ-Refabricated** 附属模组�
 - `bbs_tacz:state` 是注册的 BBS `bbs_tacz:frame_v1` 通道；`bbs_tacz:commands` 保存同一时刻的有序 JSON 指令批次。数据可保存/读取/同步，不使用 Java 对象序列化。
 - `frame_v1` 是**求值后视觉快照**，不是完整 Lua VM 存档。命令日志保存触发与轨道操作，但画面以快照为准，避免状态机重算造成改装/打断差异。
 - 真正的 FP 绘制默认最多记录 60 次/秒，可在开发/游戏配置目录的 `bbs_tacz.json` 修改 `recordingFps`（20–240）。实际采样不会超过游戏真实绘制帧率；F5 镜像以客户端 tick 和击发采样为主，不等价于每个高帧率 FP 渲染子帧。
-- TACZ 音轨遵循 BBS 外部资产约定，位于 `assets/audio/bbs_tacz/`；分享影片时一并分享该目录。旧影片未保存的声音无法精确推断原音高/停止时刻，应重新录制该轨道。F6 导出音轨需启用 BBS 视频“导出音频”设置；首帧同步功能需客户端/服务端安装同一 BBS TACZ 构建。
+- 新录制在影片的 `bbs_tacz:sounds` 通道保存原生声音命令，Ctrl 回放直接使用对应枪包的声音，不创建枪声音频剪辑或外部 WAV 资产。仅旧版影片的 `assets/audio/bbs_tacz/` 音轨仍需随影片分享；旧片未保存的声音参数无法精确推断，建议重新录制。F4/F6 需启用 BBS 视频“导出音频”设置；影片同步、录制游标与首帧握手需客户端/服务端安装同一 BBS TACZ 构建。
 - 回放需要对应枪包和粒子定义；保存影片不会把模型、皮肤纹理或枪包复制进影片/JAR。
 - 客户端暂停/拖动不会反复生成弹丸；**已进入服务端世界的真实弹丸遵循 Minecraft 物理时钟**，不会因客户端编辑器暂停自动冻结/倒退。
 - 自动化测试验证原生接口、数据、矩阵、实际绘制和服务器物理，**并不意味着用户列举的每个复杂动作组合、每个枪包和每种光影已逐像素验收**。完整验收清单见 `docs/TESTING.md`。
@@ -84,9 +85,10 @@ Gradle 使用 Java 21；开发 Minecraft 进程使用 Java 17。
 ./gradlew verifySmoke
 ./gradlew runClient -Preview=F6AudioExportReview
 ./gradlew verifyReview -Preview=F6AudioExportReview
+scripts/verify-replays.sh
 ```
 
-**本轮验证：40 项单元测试通过，完整原生 smoke 为 `PASS 66`。专项原生复现/修复与 F6 音视频验证见 `docs/REVIEW_FIXES.md`。**
+**本轮验证：68 项 JUnit、22 个原生专项、完整 smoke `PASS 66`；实际 F4/F6 H.264/AAC 完整解码通过。复现、修复和最终验收见 `docs/REPLAY_EXPORT_REVIEW.md`。`scripts/verify-replays.sh` 串行运行全部原生场景与媒体解码检查，不并行启动 Minecraft。**
 
 构建产物位于 `build/libs/`，包含发布 JAR 和源码 JAR。`auditJar` 检查身份、Mixin、独立形态及不内嵌依赖/测试代码。
 
@@ -95,6 +97,7 @@ Gradle 使用 Java 21；开发 Minecraft 进程使用 Java 17。
 - 架构：`docs/ARCHITECTURE.md`
 - 独立形态设计说明：`docs/NATIVE_PLAYER_BACKEND.md`
 - 验证记录与未验收项：`docs/TESTING.md`
-- 本轮逐项复现、根因、修复与验证：`docs/REVIEW_FIXES.md`
+- 形态/皮肤/原始 F6 审查记录：`docs/REVIEW_FIXES.md`
+- Alt/Ctrl、F4/F6、原生声音与弹道专项交付：`docs/REPLAY_EXPORT_REVIEW.md`
 
 本项目使用 MIT 许可证。前置模组和资源包遵循各自的许可证，见 `THIRD_PARTY_NOTICES.md`。
