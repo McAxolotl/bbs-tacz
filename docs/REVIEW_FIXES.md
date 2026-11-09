@@ -75,3 +75,9 @@
 - 复现：公开 F6 session.start 后同 tick cancel，20 tick 后服务端/客户端均仍在播放；晚到的 play 回复重新创建影片，`F6CancelReview` 失败。
 - 修复：为原生有序回复分配每影片启动票据，只丢弃被取消的那次回复，不丢弃更新的重试；取消时停止已有客户端控制器，并发送幂等服务端 STOP，不用可能再次开播的 toggle。等待票据在退出/断线清理，并有过期上限。
 - 验证：同 tick 取消后 `client=false / server=false`；取消后立即重试保留新的播放；已创建控制器的取消也不残留、不重启。原生 `F6CancelReview` 和 3 项票据单测 `PASS`，构建通过。
+
+## 验证基础设施
+
+- 复现：修复前原生测试写出 FAIL 后关闭 Minecraft，Gradle 仍返回 BUILD SUCCESSFUL；先前所有失败日志均可对照这一现象。
+- 修复：runClient 在 review/smoke 模式强制检查结果文件；另提供 `verifyReview` 检查已有原生报告。场景名限制为简单 Java 类名，避免不安全文件路径。
+- 验证：失败报告使任务非零退出；既有成功报告返回 PASS；不安全场景名在配置阶段被拒绝。最后完整原生 smoke 为 `PASS 66`，不以单纯 Gradle 退出码替代原生结果。

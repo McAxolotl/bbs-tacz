@@ -121,12 +121,20 @@ tasks.named('runClient') {
     }
 }
 
+def nativeReview = project.hasProperty('review') ? project.property('review').toString() : null
+if (nativeReview != null && !(nativeReview ==~ /[A-Za-z][A-Za-z0-9_]*/)) throw new GradleException('Review must be a simple scenario class name')
+def assertNativeReport = { File report, String expected ->
+    if (!report.isFile() || report.text.trim() != expected) throw new GradleException("Native validation did not pass: ${report.isFile() ? report.text.trim() : 'no report'}")
+    logger.lifecycle(report.text.trim())
+}
+
 tasks.named('runClient') {
-    if (project.hasProperty('review')) {
+    if (nativeReview != null) {
         dependsOn tasks.named('smokeClasses')
         classpath += sourceSets.smoke.runtimeClasspath
-        systemProperty 'bbstacz.review', project.property('review')
-        doFirst { file('run/bbs-tacz-review-' + project.property('review') + '.txt').delete() }
+        systemProperty 'bbstacz.review', nativeReview
+        doFirst { file('run/bbs-tacz-review-' + nativeReview + '.txt').delete() }
+        doLast { assertNativeReport(file('run/bbs-tacz-review-' + nativeReview + '.txt'), 'PASS') }
     }
 }
 
@@ -135,6 +143,15 @@ tasks.register('verifySmoke') {
         def report = file('run/bbs-tacz-smoke.txt')
         if (!report.isFile() || report.text.trim() != 'PASS 66') throw new GradleException("Native smoke did not pass: ${report.isFile() ? report.text : 'no report'}")
         logger.lifecycle(report.text.trim())
+    }
+}
+tasks.named('runClient') {
+    if (project.hasProperty('smoke')) doLast { assertNativeReport(file('run/bbs-tacz-smoke.txt'), 'PASS 66') }
+}
+tasks.register('verifyReview') {
+    doLast {
+        if (nativeReview == null) throw new GradleException('Use -Preview=ScenarioName')
+        assertNativeReport(file('run/bbs-tacz-review-' + nativeReview + '.txt'), 'PASS')
     }
 }
 tasks.register('auditJar') {
