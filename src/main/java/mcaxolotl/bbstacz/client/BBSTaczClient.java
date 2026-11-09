@@ -54,7 +54,7 @@ public final class BBSTaczClient implements BBSAddonMod {
     @Subscribe public void editors(RegisterFormEditorsEvent event) { event.register(TaczForm.class, UITaczForm::new); }
     @Subscribe public void palette(RegisterFormSectionsEvent event) { event.register(TaczFormSection::new); }
     public static void clear() {
-        RecordedAudio.clear(); SkinTextureBridge.clear(); LiveCapture.clear(); CommandJournal.clear(); ActorAnimations.clear(); FirstPersonPlayback.clear(); ThirdPersonPose.clear();
+        F6Starts.clear(); RecordedAudio.clear(); SkinTextureBridge.clear(); LiveCapture.clear(); CommandJournal.clear(); ActorAnimations.clear(); FirstPersonPlayback.clear(); ThirdPersonPose.clear();
         NativeRenderScope.clear(); MirrorParticles.clear(); ReplayClock.clear(); ShellHistory.clear(); ThirdPersonShells.clear(); ShellIds.clear(); PhysicalCrawl.clearClient(); ReplayBindings.clear();
     }
 }

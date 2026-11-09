@@ -29,6 +29,7 @@
     "MirrorMuzzleCameraMixin",
     "RecordedHandPassMixin",
     "F6PlaybackMixin",
+    "F6PlayResponseMixin",
     "AudioTakeMixin",
     "NativeSoundRecordMixin",
     "NativeSoundStopMixin",

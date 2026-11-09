@@ -69,3 +69,9 @@
 - 根因：任何 controller 的 SHUTDOWN 都会释放玩家全部爬行状态，演员/摄像机未分配独立所有者。补充双端测试还发现 Minecraft `Entity.equals` 按实体 ID 比较，内置服务端与客户端的同 ID 实体被普通 WeakHashMap 合并。
 - 修复：爬行保存一个原始还原点，由演员绑定、服务端 ActionPlayer、第一人称摄像机分别拥有请求；最近的请求生效，释放一个请求不会释放其他请求。使用弱对象身份键隔离客户端、服务端和所有者；最后一个所有者释放后恢复原姿态/游泳/强制状态。绑定释放时保留仍有效的 leaning pitch。
 - 验证：无关 B 关闭后高度仍为 `0.6`；临时 false 覆盖释放后回到 A 的 true；停止 A 无残留。内置服务端独立所有者及最终还原通过；3 项弱身份键单测防止相等 ID 合并。`CrawlOwnershipReview`、构建、Mixin 审计均 `PASS`。
+
+## F6 取消与重试
+
+- 复现：公开 F6 session.start 后同 tick cancel，20 tick 后服务端/客户端均仍在播放；晚到的 play 回复重新创建影片，`F6CancelReview` 失败。
+- 修复：为原生有序回复分配每影片启动票据，只丢弃被取消的那次回复，不丢弃更新的重试；取消时停止已有客户端控制器，并发送幂等服务端 STOP，不用可能再次开播的 toggle。等待票据在退出/断线清理，并有过期上限。
+- 验证：同 tick 取消后 `client=false / server=false`；取消后立即重试保留新的播放；已创建控制器的取消也不残留、不重启。原生 `F6CancelReview` 和 3 项票据单测 `PASS`，构建通过。

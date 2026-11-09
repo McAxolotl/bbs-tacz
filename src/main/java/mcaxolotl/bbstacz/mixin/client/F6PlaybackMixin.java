@@ -1,6 +1,7 @@
 package mcaxolotl.bbstacz.mixin.client;
 
 import mcaxolotl.bbstacz.forms.TaczForm;
+import mcaxolotl.bbstacz.client.F6Starts;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.Films;
@@ -27,12 +28,13 @@ public abstract class F6PlaybackMixin {
         return replay != null && replay.form.get() instanceof TaczForm ? Math.max(1, delay) : delay;
     }
     @Unique private String bbstacz$pendingFilm;
+    @Unique private F6Starts.Ticket bbstacz$ticket;
     @Unique private long bbstacz$requestedAt;
     @Inject(method = "start", at = @At(value = "INVOKE", target = "Lmchorse/bbs_mod/film/Films;playFilm(Ljava/lang/String;Z)V"))
     private void bbstacz$unfreeze(String filmId, Film film, CallbackInfoReturnable<Boolean> ci) {
         var replay = film == null ? null : film.getFirstPersonReplay();
         if (filmId == null || replay == null || !(replay.form.get() instanceof TaczForm)) return;
-        bbstacz$pendingFilm = filmId; bbstacz$requestedAt = System.currentTimeMillis();
+        bbstacz$pendingFilm = filmId; bbstacz$requestedAt = System.currentTimeMillis(); bbstacz$ticket = F6Starts.request(filmId);
         var films = BBSModClient.getFilms();
         films.unfreeze(filmId);
         while (films.getController(filmId) != null) Films.stopFilm(filmId);
@@ -52,8 +54,18 @@ public abstract class F6PlaybackMixin {
         if (bbstacz$pendingFilm != null && !(BBSModClient.getFilms().getController(bbstacz$pendingFilm) instanceof WorldFilmController)) ci.setReturnValue(false);
     }
 
+    @Inject(method = "teardown", at = @At("HEAD"))
+    private void bbstacz$cancel(boolean cancelled, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+        if (!cancelled || bbstacz$pendingFilm == null) return;
+        F6Starts.cancel(bbstacz$ticket);
+        var films = BBSModClient.getFilms(); films.unfreeze(bbstacz$pendingFilm);
+        while (films.getController(bbstacz$pendingFilm) != null) Films.stopFilm(bbstacz$pendingFilm);
+        // Idempotent stop, never the toggle which could restart a film already stopped by this cancellation.
+        if (ClientNetwork.isIsBBSModOnServer()) ClientNetwork.sendActionState(bbstacz$pendingFilm, ActionState.STOP, 0);
+    }
+
     @Inject(method = "teardown", at = @At("TAIL"))
     private void bbstacz$clear(boolean cancelled, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
-        bbstacz$pendingFilm = null; bbstacz$requestedAt = 0;
+        bbstacz$pendingFilm = null; bbstacz$requestedAt = 0; bbstacz$ticket = null;
     }
 }
