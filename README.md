@@ -7,7 +7,7 @@ Minecraft **1.20.1 / Fabric** 的 **BBS FS × TACZ-Refabricated** 附属模组�
 - Java 包：`mcaxolotl.bbstacz`
 - 模组 ID：`bbs_tacz`
 - 独立形态 ID：**`bbs_tacz:player`**
-- 版本：**1.1.0**
+- 版本：**v1.0.0**
 
 ## 现在的方案：只使用独立 TACZ 形态
 
@@ -31,7 +31,7 @@ Minecraft **1.20.1 / Fabric** 的 **BBS FS × TACZ-Refabricated** 附属模组�
 | Forge Config API Port | 8.0.3，Fabric 1.20.1 版 |
 | Player Animator | **1.0.2-rc1+1.20，必需** |
 
-安装 `bbs-tacz-1.1.0+mc1.20.1.jar`。`forge1.2.0` 是 TACZ 发布版本名的一部分，这里用的是 **Fabric 移植版**，不能替换成 Forge TACZ。
+安装 `bbs-tacz-v1.0.0.jar`。`forge1.2.0` 是 TACZ 发布版本名的一部分，这里用的是 **Fabric 移植版**，不能替换成 Forge TACZ。
 
 本 JAR 不内嵌 BBS、TACZ、Player Animator 或枪包。真实弹丸和爬行回放需要服务端也安装 BBS、TACZ、本附属模组及其前置。不同/更新版本的兼容性不等同于已验证版本。
 

@@ -6,7 +6,7 @@
 2. 后续讨论原生 player 的 MobForm 能否更等价。
 3. 最终决定：**新形态如果覆盖工作，就不需要 ModelForm 或 MobForm 路径**。
 
-因此 1.1 的实现是 `TaczForm extends Form`，只提供独立原生玩家形态；旧的双后端建议在这里被替代。没有偷偷继承 MobForm，也没有继续注册 ModelForm 的程序化 animator。
+因此 v1.0.0 的实现是 `TaczForm extends Form`，只提供独立原生玩家形态；旧的双后端建议在这里被替代。没有偷偷继承 MobForm，也没有继续注册 ModelForm 的程序化 animator。
 
 ## 原生 player 身份不仅是一个模型名称
 

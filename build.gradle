@@ -1,7 +1,8 @@
 plugins {
     id 'fabric-loom' version '1.15-SNAPSHOT'
 }
-version = project.mod_version + '+mc' + project.minecraft_version
+version = project.mod_version
+if (version != 'v1.0.0') throw new GradleException('BBS TACZ version is user-controlled and must remain v1.0.0')
 group = 'mcaxolotl.bbstacz'
 base { archivesName = 'bbs-tacz' }
 repositories {
