@@ -9,7 +9,8 @@
     "HandNeutralProbeMixin",
     "ReviewPoseProbeMixin",
     "ReviewGunReadyMixin",
-    "F6CaptureProbeMixin"
+    "F6CaptureProbeMixin",
+    "ExportSlowFrameProbeMixin"
   ],
   "injectors": {
     "defaultRequire": 1

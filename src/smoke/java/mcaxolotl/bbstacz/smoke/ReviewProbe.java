@@ -12,6 +12,7 @@ public final class ReviewProbe {
     public static String exportFilm;
     public static int firstExportTick=-1;
     public static boolean failFirstFrame;
+    public static int exportSleepMillis;
     public static double firstWorldTime=Double.NaN, lastWorldTime;
     public static long firstGunTime, lastGunTime;
     public static void resetClock() { firstWorldTime=Double.NaN; }

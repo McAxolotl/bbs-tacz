@@ -12,6 +12,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class ExportAnimationClockMixin {
     @Inject(method="nowNanos", at=@At("RETURN"), cancellable=true)
     private void bbstacz$videoTime(CallbackInfoReturnable<Long> ci) { ci.setReturnValue(ExportGunClock.sample(ci.getReturnValue())); }
+    @Inject(method="update", at=@At("TAIL"))
+    private void bbstacz$gunWork(CallbackInfo ci) { mcaxolotl.bbstacz.client.ClockedGunTasks.pump(); }
     @Inject(method="reset", at=@At("TAIL"))
-    private void bbstacz$reset(CallbackInfo ci) { ExportGunClock.reset(); }
+    private void bbstacz$reset(CallbackInfo ci) { mcaxolotl.bbstacz.client.ClockedGunTasks.clear(); ExportGunClock.reset(); }
 }

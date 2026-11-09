@@ -41,7 +41,8 @@
     "RecordedArmMixin",
     "ParticleFovAccess",
     "ExportAnimationClockMixin",
-    "ClockedGunDynamicsMixin"
+    "ClockedGunDynamicsMixin",
+    "ClockedGunSchedulingMixin"
   ],
   "injectors": {
     "defaultRequire": 1
