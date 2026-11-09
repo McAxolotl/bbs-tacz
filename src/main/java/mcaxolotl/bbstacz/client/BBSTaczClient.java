@@ -19,18 +19,24 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.Minecraft;
 
 public final class BBSTaczClient implements BBSAddonMod {
+    private static final Object CAMERA_CRAWL = new Object();
+    private static void syncCameraCrawl() {
+        var player = Minecraft.getInstance().player; if (player == null) return;
+        var target = FirstPersonPlayback.target(0);
+        if (target != null) PhysicalCrawl.apply(player, CAMERA_CRAWL, target.frame().crawling());
+        else PhysicalCrawl.release(player, CAMERA_CRAWL);
+    }
     public BBSTaczClient() {
         TaczConfig.load();
         FilmEvents.CREATED.register(controller -> { FirstPersonPlayback.watch(controller); ReplayClock.watch(controller); });
         FilmEvents.TICK_AFTER.register((controller, tick) -> {
             FirstPersonPlayback.watch(controller); ReplayClock.watch(controller);
-            var target = FirstPersonPlayback.target(0);
-            if (target != null && Minecraft.getInstance().player != null) PhysicalCrawl.apply(Minecraft.getInstance().player, target.frame().crawling());
+            syncCameraCrawl();
         });
         FilmEvents.SHUTDOWN.register(controller -> {
-            controller.getEntities().values().forEach(entity -> { ReplayBindings.release(entity); ThirdPersonShells.release(entity); });
             FirstPersonPlayback.stop(controller); ReplayClock.stop(controller);
-            if (Minecraft.getInstance().player != null) PhysicalCrawl.release(Minecraft.getInstance().player);
+            controller.getEntities().values().forEach(entity -> { ReplayBindings.release(entity); ThirdPersonShells.release(entity); });
+            syncCameraCrawl();
         });
         GunFireEvent.CALLBACK.register(event -> {
             if (!event.getLogicalSide().isClient()) return;

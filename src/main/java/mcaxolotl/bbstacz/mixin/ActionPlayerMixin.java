@@ -19,8 +19,8 @@ public abstract class ActionPlayerMixin {
     @Inject(method = "apply", at = @At("TAIL"))
     private void bbstacz$crawl(LivingEntity actor, Replay replay, float tick, boolean ticking, CallbackInfo ci) {
         var channel = ((TaczReplayChannels) replay.keyframes).bbstacz$state();
-        if (!channel.isEmpty()) PhysicalCrawl.apply(actor, channel.interpolate(replay.getTick((int) tick), FrameSnapshot.EMPTY).crawling());
+        if (!channel.isEmpty()) PhysicalCrawl.apply(actor, this, channel.interpolate(replay.getTick((int) tick), FrameSnapshot.EMPTY).crawling());
     }
     @Inject(method = "stop", at = @At("HEAD"))
-    private void bbstacz$restore(CallbackInfo ci) { actors.values().forEach(PhysicalCrawl::release); }
+    private void bbstacz$restore(CallbackInfo ci) { actors.values().forEach(actor -> PhysicalCrawl.release(actor, this)); }
 }

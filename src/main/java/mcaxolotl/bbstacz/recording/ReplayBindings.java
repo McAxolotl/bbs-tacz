@@ -23,7 +23,7 @@ public final class ReplayBindings {
         BINDINGS.put(entity, new Binding(channel, tick, keyframes, replay));
         FrameSnapshot frame = FrameSampler.sample(channel, tick);
         entity.setLeaningPitch(frame.crawling() || entity.isSwimming() ? 1 : 0);
-        if (entity instanceof MCEntity mc && mc.getMcEntity() instanceof LivingEntity living) PhysicalCrawl.apply(living, frame.crawling());
+        if (entity instanceof MCEntity mc && mc.getMcEntity() instanceof LivingEntity living) PhysicalCrawl.apply(living, entity, frame.crawling());
     }
     public static FrameSnapshot sample(IEntity entity, float delta) {
         Binding binding = BINDINGS.get(entity);
@@ -32,8 +32,10 @@ public final class ReplayBindings {
     public static Binding get(IEntity entity) { return BINDINGS.get(entity); }
     public static Map<IEntity, Binding> snapshot() { synchronized (BINDINGS) { return Map.copyOf(BINDINGS); } }
     public static void release(IEntity entity) {
-        BINDINGS.remove(entity); entity.setLeaningPitch(entity.isSwimming() ? 1 : 0);
-        if (entity instanceof MCEntity mc && mc.getMcEntity() instanceof LivingEntity living) PhysicalCrawl.release(living);
+        BINDINGS.remove(entity);
+        if (entity instanceof MCEntity mc && mc.getMcEntity() instanceof LivingEntity living) {
+            PhysicalCrawl.release(living, entity); entity.setLeaningPitch(PhysicalCrawl.isCrawling(living) || entity.isSwimming() ? 1 : 0);
+        } else entity.setLeaningPitch(entity.isSwimming() ? 1 : 0);
     }
     public static void clear() { BINDINGS.clear(); }
 }
