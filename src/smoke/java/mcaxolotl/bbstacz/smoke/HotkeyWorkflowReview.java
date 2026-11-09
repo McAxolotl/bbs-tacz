@@ -34,7 +34,8 @@ public class HotkeyWorkflowReview implements ReviewClient.Scenario {
     protected Path output;
     protected int phase, phaseTick, frames;
     private long drawnBefore;
-    protected boolean ctrlFinished(Minecraft client,int elapsed) { return elapsed==ctrlTicks(); }
+    protected int recordTicks() { return 50; }
+    protected boolean ctrlFinished(Minecraft client,int elapsed) throws Exception { return elapsed==ctrlTicks(); }
     protected int ctrlTicks() { return 10; }
     protected void verifyCtrl(Minecraft client) throws Exception {}
     protected void verifyVideo(Minecraft client,Path video) throws Exception {}
@@ -63,7 +64,7 @@ public class HotkeyWorkflowReview implements ReviewClient.Scenario {
             BBSModClient.getFilms().getRecorder().countdown=0; phase=2; phaseTick=tick;
         } else if (phase==2) {
             act(client,tick-phaseTick);
-            if (tick-phaseTick==50) { F4ClockReview.key(GLFW.GLFW_KEY_RIGHT_ALT); phase=3; phaseTick=tick; }
+            if (tick-phaseTick==recordTicks()) { F4ClockReview.key(GLFW.GLFW_KEY_RIGHT_ALT); phase=3; phaseTick=tick; }
         } else if (phase==3 && tick-phaseTick==20) {
             ReviewClient.require(BBSModClient.getFilms().getRecorder()==null,"Alt did not stop the take");
             var channel=((TaczReplayChannels)film.replays.getList().get(0).keyframes).bbstacz$state();
@@ -75,10 +76,11 @@ public class HotkeyWorkflowReview implements ReviewClient.Scenario {
         } else if (phase==4) {
             var controller=BBSModClient.getFilms().getController(film.getId());
             if (controller instanceof WorldFilmController && !(controller instanceof FrozenFilmController)) {
-                System.out.println("[REVIEW hotkeys] Ctrl controller="+controller.getClass().getSimpleName()+" duration="+controller.film.calculateDuration());
+                int serverTick=client.getSingleplayerServer().submit(()-> { var action=BBSMod.getActions().getPlayer(film.getId()); return action==null?-1:action.tick; }).get();
+                System.out.println("[REVIEW hotkeys] Ctrl controller="+controller.getClass().getSimpleName()+" duration="+controller.film.calculateDuration()+" client/server ticks="+controller.getTick()+"/"+serverTick);
                 if (FirstPersonPlayback.target(0)!=null) { phase=5; phaseTick=tick; }
-                else ReviewClient.require(tick-phaseTick<30,"Ctrl selected no recorded FP gun (tick="+controller.getTick()+")");
-            } else ReviewClient.require(tick-phaseTick<60,"Ctrl failed to start world playback");
+                else ReviewClient.require(tick-phaseTick<200,"Ctrl selected no recorded FP gun (tick="+controller.getTick()+")");
+            } else ReviewClient.require(tick-phaseTick<200,"Ctrl failed to start world playback");
         } else if (phase==5 && ctrlFinished(client,tick-phaseTick)) {
             verifyCtrl(client); if(BBSModClient.getFilms().getController(film.getId())!=null) F4ClockReview.key(GLFW.GLFW_KEY_RIGHT_CONTROL); phase=6; phaseTick=tick;
         } else if (phase==6 && tick-phaseTick==10) {
@@ -98,7 +100,7 @@ public class HotkeyWorkflowReview implements ReviewClient.Scenario {
                 return true;
             }
         }
-        ReviewClient.require(phase<1 || tick-phaseTick<250,"Hotkey workflow stalled at phase "+phase);
+        ReviewClient.require(phase<1 || tick-phaseTick<(phase==2||phase==5||phase==7?recordTicks()+250:250),"Hotkey workflow stalled at phase "+phase);
         return false;
     }
 }

@@ -10,7 +10,7 @@ import net.minecraft.client.gui.screens.TitleScreen;
 
 /** Separate native review entrypoint. Opens only a newly generated test world; no production hooks. */
 public final class ReviewClient implements ClientModInitializer {
-    public interface Scenario { boolean tick(Minecraft client, int tick) throws Exception; }
+    public interface Scenario { boolean tick(Minecraft client, int tick) throws Exception; default int timeoutTicks() { return 1400; } }
     private boolean creating, finished;
     private final long startedAt = System.currentTimeMillis();
     private int tick;
@@ -24,7 +24,7 @@ public final class ReviewClient implements ClientModInitializer {
                 if (creating && scenario != null && client.player == null) throw new AssertionError("Native review world disconnected before completion");
                 if (client.getOverlay() != null) return;
                 if (!creating && client.screen instanceof TitleScreen) {
-                    creating = true; client.options.pauseOnLostFocus = false;
+                    creating = true; client.options.pauseOnLostFocus = false; client.options.renderDistance().set(8); client.options.simulationDistance().set(5);
                     client.createWorldOpenFlows().createFreshLevel("bbs-tacz-review-" + name + "-" + System.currentTimeMillis(),
                         new net.minecraft.world.level.LevelSettings("BBS TACZ review", net.minecraft.world.level.GameType.CREATIVE, false,
                             net.minecraft.world.Difficulty.PEACEFUL, true, new net.minecraft.world.level.GameRules(), net.minecraft.world.level.WorldDataConfiguration.DEFAULT),
@@ -38,7 +38,7 @@ public final class ReviewClient implements ClientModInitializer {
                     client.setScreen(null);
                     scenario = (Scenario) Class.forName("mcaxolotl.bbstacz.smoke." + name).getDeclaredConstructor().newInstance();
                 }
-                if (tick > 1400) throw new AssertionError("Native review timed out");
+                if (tick > scenario.timeoutTicks()) throw new AssertionError("Native review timed out");
                 if (scenario.tick(client, tick++)) finish(client, name, "PASS");
             } catch (Throwable failure) { failure.printStackTrace(); finish(client, name, "FAIL " + failure); }
         });

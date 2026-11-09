@@ -13,15 +13,18 @@ public final class ProjectileProbe {
     public static final CopyOnWriteArrayList<Shot> shots=new CopyOnWriteArrayList<>();
     public static int frame, duplicateDraws, rendered;
     private static final Map<Integer,Integer> drawn=new HashMap<>();
+    private static final Map<String,Integer> phaseDraws=new HashMap<>();
     public static void frame() { frame++; drawn.clear(); }
     public static void spawn(EntityKineticBullet bullet) {
         System.out.println("[REVIEW projectile spawn] phase="+phase+" id="+bullet.getId()+" yaw="+bullet.getYRot());
         shots.add(new Shot(phase,bullet.getDeltaMovement(),bullet.getYRot(),bullet.getXRot(),bullet.yRotO,bullet.xRotO));
     }
     public static void draw(EntityKineticBullet bullet) {
-        if (!phase.equals("ctrl")&&!phase.equals("f6")) return;
+        if (!phase.equals("record")&&!phase.equals("ctrl")&&!phase.equals("f6")&&!phase.equals("f4")) return;
+        if (phase.equals("f4")&&!mchorse.bbs_mod.BBSModClient.getVideoRecorder().isRecording()) return;
         if(drawn.put(bullet.getId(),frame)!=null) duplicateDraws++;
-        rendered++;
+        rendered++; phaseDraws.merge(phase,1,Integer::sum);
     }
+    public static int draws(String phase) { return phaseDraws.getOrDefault(phase,0); }
     public static long count(String phase) { return shots.stream().filter(s->s.phase().equals(phase)).count(); }
 }
