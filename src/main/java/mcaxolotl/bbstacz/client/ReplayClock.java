@@ -22,7 +22,7 @@ public final class ReplayClock {
     }
     public static float time(IEntity entity, ReplayBindings.Binding binding, float delta) {
         var controller = controller(entity, binding);
-        return controller == null ? binding.tick() + delta : binding.replay().getTick(controller.getTick()) + (controller.paused ? 0 : delta);
+        return controller == null ? binding.tick() + delta : binding.replay().getTick(controller.getTick()) + FirstPersonPlayback.delta(controller, delta);
     }
     public static void clear() { CONTROLLERS.clear(); }
 }

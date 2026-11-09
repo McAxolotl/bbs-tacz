@@ -20,6 +20,10 @@ import mchorse.bbs_mod.film.Recorder;
 import mchorse.bbs_mod.film.WorldFilmController;
 import mchorse.bbs_mod.film.FrozenFilmController;
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.controller.FilmEditorController;
+import mchorse.bbs_mod.ui.framework.UIScreen;
+import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.film.replays.Replay;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -54,7 +58,7 @@ public final class FirstPersonPlayback {
             var managed = films.getControllers();
             for (int i = managed.size() - 1; i >= 0; i--) {
                 var controller = managed.get(i);
-                if (controller instanceof WorldFilmController && !(controller instanceof Recorder)
+                if (CONTROLLERS.containsKey(controller) && controller instanceof WorldFilmController && !(controller instanceof Recorder)
                     && controller.film != null && controller.film.hasFirstPerson() && !controller.hasFinished()) return controller;
             }
         }
@@ -62,11 +66,24 @@ public final class FirstPersonPlayback {
         BaseFilmController latest = null; long order = -1;
         for (var entry : CONTROLLERS.entrySet()) {
             var controller = entry.getKey();
+            if (controller instanceof FilmEditorController && editorPanel(controller) == null) continue;
             if (controller.film == null || !controller.film.hasFirstPerson()
                 || controller instanceof WorldFilmController && controller.hasFinished()) continue;
             if (entry.getValue() > order) { latest = controller; order = entry.getValue(); }
         }
         return latest;
+    }
+    private static UIFilmPanel editorPanel(BaseFilmController controller) {
+        if (!(controller instanceof FilmEditorController) || !(Minecraft.getInstance().screen instanceof UIScreen)
+            || !(UIScreen.getCurrentMenu() instanceof UIDashboard dashboard)) return null;
+        return dashboard.getPanels().panel instanceof UIFilmPanel panel && panel.getData() == controller.film ? panel : null;
+    }
+    public static float delta(BaseFilmController controller, float delta) {
+        if (Minecraft.getInstance().isPaused()) return 0;
+        if (controller instanceof FilmEditorController) {
+            var panel = editorPanel(controller); return panel == null ? 0 : panel.getRunner().getTransition(delta);
+        }
+        return controller.paused ? 0 : delta;
     }
     public static Target target(float delta) {
         if (!TaczConfig.INSTANCE.firstPersonReplay || CommandJournal.recorder() != null || Minecraft.getInstance().player == null) return null;
@@ -76,7 +93,7 @@ public final class FirstPersonPlayback {
         if (replay == null || !replay.enabled.get() || !(replay.form.get() instanceof mcaxolotl.bbstacz.forms.TaczForm)) return null;
         var channel = ((TaczReplayChannels) replay.keyframes).bbstacz$state();
         if (channel.isEmpty()) return null;
-        float tick = replay.getTick(current.getTick()) + (current.paused ? 0 : delta);
+        float tick = replay.getTick(current.getTick()) + delta(current, delta);
         FrameSnapshot frame = mcaxolotl.bbstacz.recording.FrameSampler.sample(channel, tick);
         return frame.firstPerson() ? new Target(current, replay, tick, frame) : null;
     }

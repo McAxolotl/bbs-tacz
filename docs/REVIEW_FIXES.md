@@ -50,3 +50,9 @@
 - 集成验证：`F6AudioExportReview` 通过公开录制→编辑器应用→保存/读取→真实 F6→FFmpeg→BBS 原生音频后混音链路。H.264 视频中检测到所选皮肤 `3,202` 个特征像素；AAC 解码 `311,978` 个非零字节，第一人称实际绘制 163 次。
 - 资源审查：实际固定依赖的 BBS 二进制已经按 `Sound.getPath()` 解析 `tacz_sounds`，并非资源路径错误；`NativeSoundExportReview` 的正确 48 kHz 对照混音通过，未修改该原生逻辑。
 - 数据边界：音频文件遵循 BBS 外部资产约定，位于 `assets/audio/bbs_tacz/`，分享影片时需一同分享这些资产。旧影片若没有声音数据，无法精确恢复原音高/打断时刻，应重新录制该轨道；不伪造“已恢复”的音效。枪包/生成音频不打包进模组 JAR。
+
+## 编辑器与世界回放所有权
+
+- 复现：`HiddenPreviewReview` 在未打开 UI 时载入影片标签，世界第一人称目标仍是 `FilmEditorController`，测试失败；会导致编辑器关闭后覆盖玩家持枪/回放视图。
+- 修复：仅允许当前可见的影片编辑器及其当前数据成为预览目标；管理中的世界播放优先，停止中的 controller 从候选注册表移除。编辑器使用 runner 的真实 partial/暂停时间，而不是 `BaseFilmController.paused`。
+- 验证：隐藏 UI 无目标，打开对应编辑器后预览仍有效，暂停时 0.2/0.8 的 render delta 得到相同时间，关闭后无残留覆盖。原生重现 `PASS`。
