@@ -62,6 +62,18 @@ BBS 整数 tick 的保底数据与实际 FP 绘制采样可能先后竞争；一
 
 F5 使用 `OffscreenCapture` 和 `MirrorParticles`。镜像系统隔离原生 pending/bound/base-pose/光照容器，摄像机替换为虚拟 FP 眼睛（包括正面 F5），把本应投递到世界的烟雾留在镜像系统中。新的 take、模型切换、倒退和 FP 间隔会清理旧镜像状态。
 
+## 原生皮肤与音效
+
+`SkinTextureBridge` 将 BBS 纹理借用为原生纹理别名；`TaczVisualPlayer` 返回形态的所选别名。原生身体/手臂/袖层按各自材质绑定，无需全局“首个刷层” hook。别名每次绑定读取 BBS 当前 GL id，重载/动画由 BBS 负责，原生纹理关闭不删除 BBS 的纹理。
+
+`RecordedAudio` 在原生最终 SoundData 解析后捕获声音实例，并监听停止。停录时按实际音高重采样，保留亚 tick 起点和打断长度，再创建普通 BBS 音频片段。重录只替换当前 replay 所有的音频区间；录制中不监听旧枪声轨道。世界音频 context 跟随 controller/游戏暂停，BBS 自己管理 OpenAL 的 seek/resume/shutdown。
+
+生成 WAV 遵循 BBS 外部资产约定，不随模组分发或隐式复制进影片。存在录制音轨时，仅抑制重复的原生声音；真实射击/弹丸通知仍保留。
+
+## F6 与控制器生命周期
+
+世界播放优先于编辑器预览；隐藏或过期的影片标签不接管第一人称摄像机，可见预览使用 runner 时钟。F6 清理同影片的编辑器/旧播放，在权限校验后同一服务端任务中创建并暂停原生 NORMAL ActionPlayer；客户端构造事件也保持 tick 0，首次实际视频 readback 后才恢复双端。0 延迟也走准备阶段，不使用 goTo 倒退/重发动作补帧。`F6Starts` 跟踪原生按序到达的回复，取消旧请求不会丢弃后续重试或使晚到回复复活播放。
+
 ## 第三人称弹壳
 
 `CapturedShells` 捕获原生 Lua 的真实 pop-shell 时刻、随机速度、origin 和发射枪的 SNBT，不随当前热栏切换丢失。回放弹壳更新由世界 pass 驱动，不依赖当前 gun draw 或人物是否被剔除。
@@ -76,4 +88,4 @@ F5 使用 `OffscreenCapture` 和 `MirrorParticles`。镜像系统隔离原生 pe
 
 回放为新实体、新 owner 和新起点，并按演员新朝向旋转发射偏移和速度；碰撞、伤害、重力、穿透和爆炸交给 TACZ 自身。网络击发通知单独保存，不再次执行原生发射。
 
-`PhysicalCrawl` 借用并恢复 pose、forced pose、crawling 和 swimming 状态。干地爬行不是水中游泳；实际 Actor/Player 的维度和眼高受限制。构造期 TACZ holder 尚未初始化时，尺寸查询不会解引用空 holder。客户端与服务端 ownership 分侧清理。
+`PhysicalCrawl` 借用并恢复 pose、forced pose、crawling 和 swimming 状态。干地爬行不是水中游泳；实际 Actor/Player 的维度和眼高受限制。构造期 TACZ holder 尚未初始化时，尺寸查询不会解引用空 holder。客户端与服务端 ownership 分侧清理。演员绑定、服务端 ActionPlayer 和摄像机各自拥有请求，最近仍存在的请求优先，最后一个请求退出时还原。状态与所有者使用弱对象身份键，不能用 Minecraft 按 ID 比较的 Entity.equals 合并集成客户端/服务端实体。

@@ -2,7 +2,25 @@
 
 ## 最近一次完整结果
 
-2026-11-09，在上述固定发布包组合下：**20 项 JUnit 检查通过，原生 smoke 报告为 `PASS 66`**。实际生成的站立/持枪、背部/腰部装备和爬行图片已目视检查。干净构建另外执行发布 JAR 审计。
+2026-11-09，在上述固定发布包组合下：**40 项 JUnit 检查通过，原生 smoke 报告为 `PASS 66`**。实际生成的站立/持枪、背部/腰部装备和爬行图片已目视检查。干净构建另外执行发布 JAR 审计。
+
+## 本轮专项原生复现
+
+每项在修改前复现失败，在修改后用相同链路验证；结果与根因见 [完整审查记录](REVIEW_FIXES.md)。使用 `./gradlew runClient -Preview=<场景类名>`，失败或缺少原生报告会使 Gradle 失败。`verifyReview` 可检查已有报告。
+
+| 场景类名 | 重点 |
+| --- | --- |
+| `ThirdPersonArmsReview` | 实际 ModelPart 绘制时的左右臂；未 tick / 空身体快照 |
+| `FirstPersonSkinReview` | 有/无待刷新外部材质、手臂与袖层、重载与 GL 所有权 |
+| `PlaybackAudioReview` | 公共录制 API / 序列化 / PCM；原生世界 context 与 OpenAL 的 play/pause/seek/resume/stop |
+| `AudioRetakeReview` | 禁止监听旧 take，仅覆盖自身区间并保留头/尾、用户及其他 replay 音轨 |
+| `NativeSoundExportReview` | 固定 BBS 发布包的 TACZ OGG 路径与 48 kHz 原生混音对照 |
+| `HiddenPreviewReview` | 隐藏标签不接管世界摄像机，可见暂停预览正常 |
+| `CrawlOwnershipReview` | 无关 controller 关闭不站起；多 owner 与集成客户端/服务端身份隔离 |
+| `F6ExportReview` | 真实 F6 按键，公开录制→应用/保存→世界播放→FFmpeg，首帧 tick 0 / 完整时长 / 双端预热暂停 |
+| `F6AudioExportReview` | 同一 F6 链路的所选皮肤、H.264、AAC 非零解码与原生声音后混音 |
+| `F6NoDelayExportReview` | 用户视频延迟为 0 的异步启动 |
+| `F6CancelReview` | 回复前取消、取消后立即重试、已播放后的取消、模拟首帧读取失败，无 client/server 残留 |
 
 ## 自动化测试覆盖什么
 
@@ -12,8 +30,10 @@
 - 枪械/相机变换、跨 ±π 与四元数符号、奇异缩放、矩阵正交性。
 - 未来击发不提前出现；枪械切换不冻结弹壳年龄；保存发射枪；末尾帧之后的临时效果老化。
 - PA body bend、物品变换、光照和 world/model FOV 字段的回读。
-- 对安装发布包检查所有注册 Inject/Redirect/Accessor/Invoker 的目标、回调描述符和重定向调用点。
+- 对安装发布包检查所有注册 Inject/Redirect/ModifyArg/Accessor/Invoker 的目标、回调描述符和重定向调用点。
 - 独立形态直接继承 `Form`、身份/必需 PA 版本。
+- `v1.0.0` 版本锁、指定图标的原字节 SHA-256。
+- 8 项 PCM 重采样/声道/亚 tick/停止/溢出检查，3 项弱对象身份键检查，4 项 F6 回复顺序/取消/初始暂停/清理检查、3 项首帧门控检查。
 
 ### `./gradlew runClient -Psmoke`
 
@@ -59,6 +79,8 @@
 | 多人同枪的 TP 抛壳 | 出生原点、随机速度、暂停/中途跳转，人物剔除/换枪 |
 | 30/60/更高帧率的导出 | 求值采样频率、暂停不老化、重复绘制不触发 gameplay |
 | shader / Sodium / AR 等组合 | 单独验证 stencil、透明、VBO/手部 pass；无光影成功不代替光影验收 |
+| TACZ 声音与重录 | 开火/换弹/检视/配件与打断；导出音频开关、文件资产分享、仅覆盖本 replay 区间 |
+| F6 取消与多影片 | 等待回复时取消、零视频延迟、关闭无关影片、重新启动，不覆盖其他影片 |
 | 结束/断线/切世界 | 恢复 pose/swimming、共享模型、PA 层、muzzle 与 FOV cache |
 
 ## 已知验证边界
