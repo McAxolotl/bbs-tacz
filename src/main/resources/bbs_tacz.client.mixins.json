@@ -49,7 +49,9 @@
     "NativeCapturedSoundMixin",
     "NativeVideoSoundCaptureMixin",
     "NativeVideoSoundEndMixin",
-    "ClockedGunSchedulingMixin"
+    "ClockedGunSchedulingMixin",
+    "CtrlPlaybackMixin",
+    "CtrlFirstFrameMixin"
   ],
   "injectors": {
     "defaultRequire": 1

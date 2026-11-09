@@ -30,7 +30,7 @@ public final class BBSTaczClient implements BBSAddonMod {
         TaczConfig.load();
         FilmEvents.CREATED.register(controller -> {
             if (controller instanceof mchorse.bbs_mod.film.WorldFilmController world && !(controller instanceof mchorse.bbs_mod.film.Recorder)
-                && F6Starts.holdInitialFrame(controller.film.getId())) { world.paused=true; world.tick=0; }
+                && F6Starts.holdInitialFrame(controller.film.getId())) { world.paused=true; world.tick=0; CtrlPlaybackStarts.ready(world); }
             FirstPersonPlayback.watch(controller); ReplayClock.watch(controller);
         });
         FilmEvents.TICK_AFTER.register((controller, tick) -> {
@@ -39,7 +39,7 @@ public final class BBSTaczClient implements BBSAddonMod {
             syncCameraCrawl();
         });
         FilmEvents.SHUTDOWN.register(controller -> {
-            RecordedAudio.stop(controller); FirstPersonPlayback.stop(controller); ReplayClock.stop(controller);
+            CtrlPlaybackStarts.shutdown(controller); RecordedAudio.stop(controller); FirstPersonPlayback.stop(controller); ReplayClock.stop(controller);
             controller.getEntities().values().forEach(entity -> { ReplayBindings.release(entity); ThirdPersonShells.release(entity); });
             syncCameraCrawl();
         });
@@ -59,7 +59,7 @@ public final class BBSTaczClient implements BBSAddonMod {
     @Subscribe public void editors(RegisterFormEditorsEvent event) { event.register(TaczForm.class, UITaczForm::new); }
     @Subscribe public void palette(RegisterFormSectionsEvent event) { event.register(TaczFormSection::new); }
     public static void clear() {
-        ClockedGunTasks.clear(); NativeVideoSounds.clear(); F6FrameGate.clear(); F6Starts.clear(); RecordedAudio.clear(); SkinTextureBridge.clear(); LiveCapture.clear(); CommandJournal.clear(); ActorAnimations.clear(); FirstPersonPlayback.clear(); ThirdPersonPose.clear();
+        CtrlPlaybackStarts.clear(); ClockedGunTasks.clear(); NativeVideoSounds.clear(); F6FrameGate.clear(); F6Starts.clear(); RecordedAudio.clear(); SkinTextureBridge.clear(); LiveCapture.clear(); CommandJournal.clear(); ActorAnimations.clear(); FirstPersonPlayback.clear(); ThirdPersonPose.clear();
         NativeRenderScope.clear(); MirrorParticles.clear(); ReplayClock.clear(); ShellHistory.clear(); ThirdPersonShells.clear(); ShellIds.clear(); PhysicalCrawl.clearClient(); ReplayBindings.clear();
     }
 }
