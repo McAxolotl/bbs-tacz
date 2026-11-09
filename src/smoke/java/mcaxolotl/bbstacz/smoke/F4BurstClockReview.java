@@ -47,6 +47,7 @@ public final class F4BurstClockReview implements ReviewClient.Scenario {
         if (stage==3&&!BBSModClient.getVideoRecorder().isRecording()) {
             System.out.println("[REVIEW F4 burst] native interval="+interval+" fire video times="+fireTimes+" frames="+frames);
             ReviewClient.require(F4ClockReview.movies(output).size()==1,"F4 burst exported no video");
+            ReviewClient.require(ReviewProbe.serverSuccessfulShots>0,"Native burst prediction produced no real server firing");
             ReviewClient.require(fireTimes.size()==3,"Native burst emitted wrong number of client fire effects");
             for(int i=1;i<fireTimes.size();i++) ReviewClient.require(Math.abs((fireTimes.get(i)-fireTimes.get(i-1))-interval)<=35,"Native burst scheduling still uses wall time instead of video time");
             return true;

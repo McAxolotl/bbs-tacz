@@ -10,7 +10,8 @@
     "ReviewPoseProbeMixin",
     "ReviewGunReadyMixin",
     "F6CaptureProbeMixin",
-    "ExportSlowFrameProbeMixin"
+    "ExportSlowFrameProbeMixin",
+    "ServerShotProbeMixin"
   ],
   "injectors": {
     "defaultRequire": 1

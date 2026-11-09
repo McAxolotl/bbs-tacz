@@ -16,7 +16,10 @@ public final class ClockedGunTasks {
     public static void pump() {
         var client=Minecraft.getInstance(); if(client==null || !client.isSameThread() || running || !GunTime.shouldTick()) return;
         long now=GunTime.nowNanos(); running=true;
-        try { TASKS.pump(now,(due,action)->ExportGunClock.atElapsedOffset(Math.max(0,now-due),action)); }
+        try {
+            boolean video=mchorse.bbs_mod.BBSModClient.getVideoRecorder().isRecording();
+            TASKS.pump(now,(due,action)-> { if(video) ExportGunClock.atElapsedOffset(Math.max(0,now-due),action); else action.run(); });
+        }
         finally { running=false; }
     }
     public static void clear() { TASKS.clear(); }

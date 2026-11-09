@@ -13,6 +13,7 @@ public final class ReviewProbe {
     public static int firstExportTick=-1;
     public static boolean failFirstFrame;
     public static int exportSleepMillis;
+    public static volatile int serverSuccessfulShots;
     public static double firstWorldTime=Double.NaN, lastWorldTime;
     public static long firstGunTime, lastGunTime;
     public static void resetClock() { firstWorldTime=Double.NaN; }
