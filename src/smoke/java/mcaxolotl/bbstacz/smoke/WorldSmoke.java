@@ -41,7 +41,9 @@ final class WorldSmoke {
         copy.applyAction(actor, null, null, null, 0);
         EntityKineticBullet replayed = null;
         for (var entity : level.getAllEntities()) if (entity instanceof EntityKineticBullet bullet && bullet.getOwner() == actor) replayed = bullet;
-        require(replayed != null, "Playback did not spawn a real server-side projectile"); count++;
+        require(replayed != null, "Playback did not spawn a real server-side projectile");
+        mcaxolotl.bbstacz.recording.ReplayProjectiles.clearAll();
+        require(!replayed.isRemoved(), "Film cleanup removed an unbound native projectile"); count++;
         require(replayed.getDeltaMovement().distanceTo(source.getDeltaMovement()) < 1e-5, "Projectile velocity changed"); count++;
         require(((KineticBulletAccess) source).bbstacz$captureBallistics().equals(((KineticBulletAccess) replayed).bbstacz$captureBallistics()), "Damage/fuse/penetration state changed"); count++;
         TaczForm form = new TaczForm(); form.hitbox.set(true); form.hitboxHeight.set(3f); form.hitboxEyeHeight.set(2f);
