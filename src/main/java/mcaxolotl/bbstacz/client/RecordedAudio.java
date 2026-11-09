@@ -16,6 +16,7 @@ import mcaxolotl.bbstacz.mixin.client.NativeSoundPlayAccess;
 import mcaxolotl.bbstacz.mixin.client.SoundChannelAccess;
 import mcaxolotl.bbstacz.mixin.client.SoundEngineAccess;
 import mcaxolotl.bbstacz.mixin.client.SoundManagerAccess;
+import mcaxolotl.bbstacz.recording.AudioCursor;
 import mcaxolotl.bbstacz.recording.NativeSoundTimeline;
 import mcaxolotl.bbstacz.recording.ReplayBindings;
 import mcaxolotl.bbstacz.recording.TaczReplayChannels;
@@ -126,7 +127,7 @@ public final class RecordedAudio {
             if (channel.isEmpty()) continue;
             var state=tracks.computeIfAbsent(replay,Playback::new);
             float time=replay.getTick(controller.getTick())+FirstPersonPlayback.delta(controller,delta);
-            boolean seeking=Float.isFinite(state.previous) && (time<state.previous-0.001f || !video && time-state.previous>2.1f);
+            boolean seeking=AudioCursor.seeking(state.previous,time,state.playing,playing,video);
             if (!replay.enabled.get() || CommandJournal.recorder()!=null && take!=null && take.replay==replay) { state.stop(); state.previous=time; continue; }
             if (seeking) { state.stop(); state.started.clear(); }
             var entity=controller.getEntities().get(replay.getId());

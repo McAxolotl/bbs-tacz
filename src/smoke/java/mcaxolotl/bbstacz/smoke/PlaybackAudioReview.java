@@ -5,7 +5,6 @@ import com.tacz.guns.client.sound.GunSoundInstance;
 import com.tacz.guns.client.sound.SoundPlayManager;
 import com.tacz.guns.resource.modifier.AttachmentPropertyManager;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import mcaxolotl.bbstacz.client.RecordedAudio;
 import mcaxolotl.bbstacz.forms.TaczForm;
 import mcaxolotl.bbstacz.mixin.client.SoundChannelAccess;
@@ -30,12 +29,16 @@ public final class PlaybackAudioReview implements ReviewClient.Scenario {
     private GunSoundInstance inspected,voice;
     private FirstPersonFilmController playback;
     private NativeSoundTimeline.Cue reload;
-    private int sourceState(Minecraft client,GunSoundInstance sound) throws Exception {
+    private int phase, phaseTick;
+    private CompletableFuture<Integer> probe;
+    private CompletableFuture<Integer> sourceState(Minecraft client,GunSoundInstance sound) {
         var engine=((SoundManagerAccess)client.getSoundManager()).bbstacz$engine();
         var handle=((SoundEngineAccess)engine).bbstacz$channels().get(sound);
-        ReviewClient.require(handle!=null,"Native replay sound acquired no OpenAL channel");
-        var state=new CompletableFuture<Integer>(); handle.execute(channel->state.complete(AL10.alGetSourcei(((SoundChannelAccess)channel).bbstacz$source(),AL10.AL_SOURCE_STATE)));
-        return state.get(3,TimeUnit.SECONDS);
+        if (handle==null) return CompletableFuture.completedFuture(AL10.AL_INITIAL);
+        if (handle.isStopped()) return CompletableFuture.completedFuture(AL10.AL_STOPPED);
+        var state=new CompletableFuture<Integer>();
+        handle.execute(channel->state.complete(AL10.alGetSourcei(((SoundChannelAccess)channel).bbstacz$source(),AL10.AL_SOURCE_STATE)));
+        return state;
     }
     @Override public boolean tick(Minecraft client,int tick) throws Exception {
         if (tick==0) {
@@ -63,23 +66,40 @@ public final class PlaybackAudioReview implements ReviewClient.Scenario {
             System.out.println("[REVIEW native audio] serialized cues="+cues.size()+" reload ticks="+(reload.end()-reload.tick()));
         }
         if (tick==36) { RecordedAudio.playback(playback,0); ReviewClient.require(RecordedAudio.voices(playback).isEmpty(),"Paused seek started an audible cue"); }
-        if (tick==37) { playback.paused=false; RecordedAudio.playback(playback,0); voice=RecordedAudio.voices(playback).stream().filter(s->s.getRegistryName().toString().equals(reload.name())).findFirst().orElseThrow(); }
-        if (tick==38) {
+        if (tick==37) {
+            playback.paused=false; RecordedAudio.playback(playback,0.75f);
+            voice=RecordedAudio.voices(playback).stream().filter(s->s.getRegistryName().toString().equals(reload.name())).findFirst().orElseThrow();
+            // Simulate a fraction-bearing render followed by pause before the next render.
+            // Leaving the artificial fraction active lets the real renderer legitimately scrub back to its own fraction.
             playback.paused=true; RecordedAudio.playback(playback,0);
+            ReviewClient.require(RecordedAudio.voices(playback).contains(voice),"Pausing the same film tick stopped/recreated the native voice");
             ReviewClient.require(voice.getSound().getPath().getPath().startsWith("tacz_sounds/"),"Replay used a baked audio asset instead of TACZ's native sound");
-            int state=sourceState(client,voice); System.out.println("[REVIEW native audio] paused source state="+state+" film tick="+playback.getTick()+" source="+voice.getRegistryName()+" streaming="+voice.getSound().shouldStream());
-            ReviewClient.require(state==AL10.AL_PAUSED,"Native replay source failed to pause (state="+state+")");
-        }
-        if (tick==39) {
-            playback.paused=false; RecordedAudio.playback(playback,0);
-            ReviewClient.require(sourceState(client,voice)==AL10.AL_PLAYING,"Native replay source failed to resume");
-        }
-        if (tick==40) {
-            playback.paused=true; playback.tick=(int)Math.ceil(reload.end()+40); RecordedAudio.playback(playback,0);
-            ReviewClient.require(RecordedAudio.voices(playback).isEmpty(),"Seeking outside cues kept stale gun sounds alive");
-        }
-        if (tick==41) { playback.tick=(int)reload.tick()+1; playback.paused=false; RecordedAudio.playback(playback,0); ReviewClient.require(!RecordedAudio.voices(playback).isEmpty(),"Backward seek failed to reconstruct native sound"); }
-        if (tick==42) {
+            phase=1; phaseTick=tick;
+        } else if (phase==1 || phase==2) {
+            // Buffer loading and OpenAL channel creation are asynchronous. Do not block the render thread
+            // waiting on a handle that may have been released, or assume one client tick is enough to load audio.
+            ReviewClient.require(tick-phaseTick<100,"Native replay source failed to reach "+(phase==1?"paused":"playing")+" state");
+            ReviewClient.require(RecordedAudio.voices(playback).contains(voice),"Native voice disappeared during pause/resume");
+            if (probe==null) probe=sourceState(client,voice);
+            Integer state=probe.getNow(null);
+            if (state!=null) {
+                probe=null;
+                int expected=phase==1?AL10.AL_PAUSED:AL10.AL_PLAYING;
+                if (state==expected) {
+                    if (phase==1) {
+                        System.out.println("[REVIEW native audio] paused source state="+state+" film tick="+playback.getTick()+" source="+voice.getRegistryName()+" streaming="+voice.getSound().shouldStream());
+                        playback.paused=false; RecordedAudio.playback(playback,0); phase=2; phaseTick=tick;
+                    } else {
+                        playback.paused=true; playback.tick=(int)Math.ceil(reload.end()+40); RecordedAudio.playback(playback,0);
+                        ReviewClient.require(RecordedAudio.voices(playback).isEmpty(),"Seeking outside cues kept stale gun sounds alive");
+                        phase=3;
+                    }
+                }
+            }
+        } else if (phase==3) {
+            playback.tick=(int)reload.tick()+1; playback.paused=false; RecordedAudio.playback(playback,0);
+            ReviewClient.require(!RecordedAudio.voices(playback).isEmpty(),"Backward seek failed to reconstruct native sound"); phase=4;
+        } else if (phase==4) {
             BBSModClient.getFilms().remove(film.getId()); ReviewClient.require(RecordedAudio.voices(playback).isEmpty(),"Stopped film retained its native audio owner");
             System.out.println("[REVIEW native audio] OpenAL play/pause/seek/resume/stop PASS"); return true;
         }
