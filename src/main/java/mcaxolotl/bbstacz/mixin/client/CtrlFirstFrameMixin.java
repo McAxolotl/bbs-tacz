@@ -10,6 +10,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value=WorldFilmController.class,remap=false)
 public abstract class CtrlFirstFrameMixin {
+    @Inject(method="update",at=@At("HEAD"))
+    private void bbstacz$authoritativeTime(CallbackInfo ci) { CtrlPlaybackStarts.beforeUpdate((WorldFilmController)(Object)this); }
     @Inject(method="render",at=@At("RETURN"))
     private void bbstacz$openingFrame(WorldRenderContext context,CallbackInfo ci) { CtrlPlaybackStarts.rendered((WorldFilmController)(Object)this); }
 }

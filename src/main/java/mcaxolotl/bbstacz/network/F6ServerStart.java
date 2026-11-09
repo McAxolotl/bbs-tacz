@@ -14,6 +14,7 @@ public final class F6ServerStart {
     public static void register() {
         ServerPlayNetworking.registerGlobalReceiver(ID, (server, player, handler, buffer, responder) -> {
             String id = buffer.readUtf(256);
+            boolean ctrl=buffer.isReadable() && buffer.readBoolean();
             if (id.isBlank() || id.startsWith("/") || id.contains("..") || id.contains("\\")) return;
             server.execute(() -> {
                 if (!PermissionUtils.arePanelsAllowed(server, player)) return;
@@ -24,6 +25,7 @@ public final class F6ServerStart {
                 ServerNetwork.sendPlayFilm(player, player.serverLevel(), id, false);
                 var playback = BBSMod.getActions().getPlayer(id);
                 if (playback != null) playback.playing = false;
+                if(ctrl) CtrlClockSync.watch(player,playback);
             });
         });
     }

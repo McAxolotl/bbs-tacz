@@ -24,11 +24,11 @@ public abstract class CtrlPlaybackMixin {
         if(BBSModClient.getDashboardIfCreated()==null || !ClientNetwork.isIsBBSModOnServer()) return;
         var panel=BBSModClient.getDashboard().getPanel(UIFilmPanel.class); var film=panel.getData();
         var fp=film==null?null:film.getFirstPersonReplay(); if(fp==null||!(fp.form.get() instanceof TaczForm)) return;
-        String id=film.getId(); var films=BBSModClient.getFilms(); var controller=films.getController(id);
+        String id=film.getId(); mcaxolotl.bbstacz.BBSTaczAddon.LOGGER.debug("Ctrl start {}",id); var films=BBSModClient.getFilms(); var controller=films.getController(id);
         if(controller!=null && !(controller instanceof FrozenFilmController)) { CtrlPlaybackStarts.cancel(id); Films.playFilm(id,false); ci.cancel(); return; }
         if(CtrlPlaybackStarts.pending(id)) { CtrlPlaybackStarts.cancel(id); ClientNetwork.sendActionState(id,ActionState.STOP,0); ci.cancel(); return; }
         films.unfreeze(id); ClientNetwork.sendActionState(id,ActionState.STOP,0);
         CtrlPlaybackStarts.request(id); ContentType.FILMS.getRepository().save(id,film.toData().asMap());
-        var packet=PacketByteBufs.create(); packet.writeUtf(id); ClientPlayNetworking.send(F6ServerStart.ID,packet); ci.cancel();
+        var packet=PacketByteBufs.create(); packet.writeUtf(id); packet.writeBoolean(true); ClientPlayNetworking.send(F6ServerStart.ID,packet); ci.cancel();
     }
 }

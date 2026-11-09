@@ -28,6 +28,10 @@ public final class BBSTaczClient implements BBSAddonMod {
     }
     public BBSTaczClient() {
         TaczConfig.load();
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(mcaxolotl.bbstacz.network.CtrlClockSync.ID,(client,handler,packet,sender)-> {
+            String id=packet.readUtf(256); int tick=packet.readVarInt(); boolean playing=packet.readBoolean();
+            if(tick>=0&&tick<=100_000_000) client.execute(()->CtrlPlaybackStarts.receiveClock(id,tick,playing));
+        });
         FilmEvents.CREATED.register(controller -> {
             if (controller instanceof mchorse.bbs_mod.film.WorldFilmController world && !(controller instanceof mchorse.bbs_mod.film.Recorder)
                 && F6Starts.holdInitialFrame(controller.film.getId())) { world.paused=true; world.tick=0; CtrlPlaybackStarts.ready(world); }
@@ -56,7 +60,7 @@ public final class BBSTaczClient implements BBSAddonMod {
         com.tacz.guns.api.event.common.GunReloadEvent.CALLBACK.register(event -> { if (event.getLogicalSide().isClient()) ActorAnimations.event(event.getEntity(), event.getGunItemStack(), "reload"); });
         com.tacz.guns.api.event.common.GunMeleeEvent.CALLBACK.register(event -> { if (event.getLogicalSide().isClient()) ActorAnimations.event(event.getShooter(), event.getGunItemStack(), "melee"); });
         com.tacz.guns.api.event.common.GunDrawEvent.CALLBACK.register(event -> { if (event.getLogicalSide().isClient()) ActorAnimations.event(event.getEntity(), event.getCurrentGunItem(), "draw"); });
-        WorldRenderEvents.LAST.register(ThirdPersonShells::render);
+        WorldRenderEvents.LAST.register(context -> { CtrlPlaybackStarts.afterWorldFrame(); ThirdPersonShells.render(context); });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> clear());
     }
     @Subscribe public void renderers(RegisterFormRenderersEvent event) { event.register(TaczForm.class, TaczFormRenderer::new); }
