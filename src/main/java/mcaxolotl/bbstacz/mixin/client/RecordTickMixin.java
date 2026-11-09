@@ -15,5 +15,10 @@ public abstract class RecordTickMixin {
     @Inject(method = "record", at = @At("TAIL"))
     private void bbstacz$record(int tick, IEntity entity, List<String> groups, CallbackInfo ci) {
         if (groups == null || groups.isEmpty()) LiveCapture.captureTick((TaczReplayChannels) this, tick, entity);
+        var recorder=mcaxolotl.bbstacz.client.CommandJournal.recorder();
+        if(recorder!=null && recorder.keyframes==(Object)this && mchorse.bbs_mod.network.ClientNetwork.isIsBBSModOnServer()) {
+            var packet=net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create(); packet.writeUtf(recorder.film.getId()); packet.writeVarInt(tick);
+            net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(mcaxolotl.bbstacz.network.RecordCursorSync.ID,packet);
+        }
     }
 }

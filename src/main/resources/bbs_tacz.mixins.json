@@ -11,7 +11,8 @@
     "PlayerDimensionsMixin",
     "PlayerEyeMixin",
     "RecordedCrawlValidationMixin",
-    "ActionPlayerSeekAccess"
+    "ActionPlayerSeekAccess",
+    "TaczActionTimingMixin"
   ],
   "injectors": {
     "defaultRequire": 1
