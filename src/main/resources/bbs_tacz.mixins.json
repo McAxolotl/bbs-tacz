@@ -12,7 +12,8 @@
     "PlayerEyeMixin",
     "RecordedCrawlValidationMixin",
     "ActionPlayerSeekAccess",
-    "TaczActionTimingMixin"
+    "TaczActionTimingMixin",
+    "TaczFilmDurationMixin"
   ],
   "injectors": {
     "defaultRequire": 1
