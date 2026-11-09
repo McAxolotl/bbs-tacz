@@ -13,7 +13,9 @@ public abstract class F6CaptureProbeMixin {
     @Inject(method = "recordFrame", at = @At("HEAD"), cancellable = true)
     private void bbstacz$first(CallbackInfo ci) {
         var recorder=(VideoRecorder)(Object)this;
-        if(!recorder.isRecording()||recorder.getCounter()!=0) return;
+        if(!recorder.isRecording()) return;
+        ReviewProbe.clock();
+        if(recorder.getCounter()!=0) return;
         if(ReviewProbe.failFirstFrame) { ReviewProbe.failFirstFrame=false; recorder.stopRecording(false); ci.cancel(); return; }
         if(ReviewProbe.exportFilm==null) return;
         var controller=BBSModClient.getFilms().getController(ReviewProbe.exportFilm);

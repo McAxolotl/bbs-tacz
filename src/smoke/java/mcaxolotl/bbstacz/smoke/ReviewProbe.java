@@ -12,6 +12,16 @@ public final class ReviewProbe {
     public static String exportFilm;
     public static int firstExportTick=-1;
     public static boolean failFirstFrame;
+    public static double firstWorldTime=Double.NaN, lastWorldTime;
+    public static long firstGunTime, lastGunTime;
+    public static void resetClock() { firstWorldTime=Double.NaN; }
+    public static void clock() {
+        var recorder=mchorse.bbs_mod.BBSModClient.getVideoRecorder();
+        double world=recorder.serverTicks+net.minecraft.client.Minecraft.getInstance().getFrameTime();
+        long gun=com.tacz.guns.util.time.GunTime.nowNanos();
+        if (Double.isNaN(firstWorldTime)) { firstWorldTime=world; firstGunTime=gun; }
+        lastWorldTime=world; lastGunTime=gun;
+    }
     public static void player(PlayerModel<?> model) {
         var scope = NativeRenderScope.current();
         if (playerDraw != null && scope != null && !scope.matrices)

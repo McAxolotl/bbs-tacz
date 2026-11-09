@@ -39,7 +39,9 @@
     "RecordedHandBobbingMixin",
     "NativePlayerNameMixin",
     "RecordedArmMixin",
-    "ParticleFovAccess"
+    "ParticleFovAccess",
+    "ExportAnimationClockMixin",
+    "ClockedGunDynamicsMixin"
   ],
   "injectors": {
     "defaultRequire": 1
