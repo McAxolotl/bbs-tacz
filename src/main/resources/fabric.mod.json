@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "bbs_tacz",
+  "version": "${version}",
+  "name": "BBS TACZ",
+  "description": "Dedicated TACZ native-player form, deterministic recording and server-side projectile playback for BBS FS.",
+  "authors": [
+    "McAxolotl"
+  ],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "bbs-addon": [
+      "mcaxolotl.bbstacz.BBSTaczAddon"
+    ],
+    "bbs-client-addon": [
+      "mcaxolotl.bbstacz.client.BBSTaczClient"
+    ]
+  },
+  "mixins": [
+    "bbs_tacz.mixins.json",
+    {
+      "config": "bbs_tacz.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.17.2",
+    "fabric-api": "*",
+    "minecraft": "1.20.1",
+    "java": ">=17",
+    "bbs": ">=2.7-1.20.1",
+    "tacz": ">=1.0.0-forge1.2.0+mc1.20.1",
+    "player-animator": "1.0.2-rc1+1.20"
+  }
+}

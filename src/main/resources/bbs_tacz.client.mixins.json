@@ -1,0 +1,39 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "mcaxolotl.bbstacz.mixin.client",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "AnimationRenderContextMixin",
+    "RecordTickMixin",
+    "GunModelCaptureMixin",
+    "GunRendererMixin",
+    "AnimationMachineMixin",
+    "AnimationCommandsMixin",
+    "RefitJournalMixin",
+    "RefitCloseMixin",
+    "MuzzleFlashAccess",
+    "ShellQueueAccess",
+    "ShellReplayMixin",
+    "ShellEmissionMixin",
+    "ParticleCaptureMixin",
+    "StaticGunFallbackMixin",
+    "RecordedFovMixin",
+    "GunMuzzleAccess",
+    "NativePlayerPoseMixin",
+    "NativeBodyRotationMixin",
+    "VisualPlayerAnimatorMixin",
+    "MuzzleIdentityMixin",
+    "MuzzleCaptureAccess",
+    "MirrorWorldParticleMixin",
+    "MirrorMuzzleCameraMixin",
+    "RecordedHandPassMixin",
+    "RecordedHandBobbingMixin",
+    "NativePlayerNameMixin",
+    "RecordedArmMixin",
+    "ParticleFovAccess"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "mcaxolotl.bbstacz.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "ReplayKeyframesMixin",
+    "KineticBulletMixin",
+    "ActionPlayerMixin",
+    "ActorDimensionsMixin",
+    "PlayerDimensionsMixin",
+    "PlayerEyeMixin",
+    "RecordedCrawlValidationMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

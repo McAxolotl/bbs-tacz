@@ -1,0 +1,162 @@
+plugins {
+    id 'fabric-loom' version '1.15-SNAPSHOT'
+}
+version = project.mod_version + '+mc' + project.minecraft_version
+group = 'mcaxolotl.bbstacz'
+base { archivesName = 'bbs-tacz' }
+repositories {
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+    maven { url = 'https://maven.kosmx.dev/' }
+    mavenCentral()
+}
+
+// TACZ embeds SBM/LuaJ. Unpack those exact pinned copies for development only;
+// they are not re-embedded in the addon. This also keeps a clean checkout buildable.
+def embedded = layout.projectDirectory.dir('.gradle/tacz-embedded').asFile
+embedded.mkdirs()
+def nativeLibraries = []
+def unpackNested
+unpackNested = { File jarFile ->
+    new java.util.zip.ZipFile(jarFile).withCloseable { zip ->
+        zip.entries().each { entry ->
+            if (entry.name.startsWith('META-INF/jars/') && entry.name.endsWith('.jar')) {
+                def output = new File(embedded, entry.name.tokenize('/').last())
+                zip.getInputStream(entry).withCloseable { input -> output.withOutputStream { it << input } }
+                nativeLibraries << output
+                unpackNested(output)
+            }
+        }
+    }
+}
+def taczHash = '1de71aa3fc17bbea21b65810075f7b8495ee7fcf'
+def cachedMods = new File(gradle.gradleUserHomeDir, 'caches/modules-2/files-2.1/maven.modrinth/tacz-refabricated')
+def original = cachedMods.isDirectory() ? fileTree(cachedMods).files.find { it.parentFile.name == taczHash && it.name.endsWith('.jar') } : null
+if (original == null) {
+    original = new File(embedded, 'tacz-original.jar')
+    if (!original.isFile()) {
+        def connection = new URI('https://cdn.modrinth.com/data/1j76DVHU/versions/wbgtQwxp/tacz-refabricated-1.0.0-forge1.2.0%2Bmc1.20.1.jar').toURL().openConnection()
+        connection.connectTimeout = 15000; connection.readTimeout = 120000
+        def temporary = new File(embedded, 'tacz-original.download')
+        connection.inputStream.withCloseable { input -> temporary.withOutputStream { it << input } }
+        java.nio.file.Files.move(temporary.toPath(), original.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    }
+}
+def digest = java.security.MessageDigest.getInstance('SHA-1')
+original.withInputStream { input ->
+    byte[] buffer = new byte[65536]
+    for (int read; (read = input.read(buffer)) != -1;) digest.update(buffer, 0, read)
+}
+if (digest.digest().encodeHex().toString() != taczHash) throw new GradleException('Pinned TACZ dependency checksum mismatch')
+unpackNested(original)
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    modImplementation("maven.modrinth:bbs-fs:${project.bbs_version}") { transitive = false }
+    modImplementation("maven.modrinth:tacz-refabricated:${project.tacz_version}") { transitive = false }
+    nativeLibraries.each { library ->
+        if (library.name.startsWith('simplebedrockmodel-') || library.name.startsWith('cardinal-components-')) modImplementation files(library)
+        else implementation files(library)
+    }
+    modImplementation 'maven.modrinth:forge-config-api-port:v8.0.3-1.20.1-Fabric'
+    modImplementation 'dev.kosmx.player-anim:player-animation-lib-fabric:1.0.2-rc1+1.20'
+    testImplementation 'org.ow2.asm:asm-tree:9.7.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+    withSourcesJar()
+}
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') { expand version: project.version }
+}
+test { useJUnitPlatform() }
+jar {
+    manifest.attributes('Implementation-Vendor': 'McAxolotl')
+    from('LICENSE') { rename { 'LICENSE_bbs_tacz' } }
+    from('THIRD_PARTY_NOTICES.md')
+    from('licenses') { into 'META-INF/licenses' }
+}
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+// Minecraft 1.20.1/LWJGL is tested on Java 17; Gradle itself uses Java 21+.
+['runClient', 'runServer'].each { taskName ->
+    tasks.named(taskName, JavaExec) { javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) } }
+}
+sourceSets {
+    smoke {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+    }
+}
+loom {
+    mods {
+        bbs_tacz { sourceSet sourceSets.main }
+        bbs_tacz_smoke { sourceSet sourceSets.smoke }
+    }
+}
+tasks.named('runClient') {
+    if (project.hasProperty('smoke')) {
+        dependsOn tasks.named('smokeClasses')
+        classpath += sourceSets.smoke.runtimeClasspath
+        systemProperty 'bbstacz.smoke', 'true'
+        doFirst { file('run/bbs-tacz-smoke.txt').delete() }
+    }
+}
+
+tasks.register('verifySmoke') {
+    doLast {
+        def report = file('run/bbs-tacz-smoke.txt')
+        if (!report.isFile() || report.text.trim() != 'PASS 66') throw new GradleException("Native smoke did not pass: ${report.isFile() ? report.text : 'no report'}")
+        logger.lifecycle(report.text.trim())
+    }
+}
+tasks.register('auditJar') {
+    dependsOn tasks.named('remapJar')
+    doLast {
+        new java.util.zip.ZipFile(tasks.named('remapJar').get().archiveFile.get().asFile).withCloseable { zip ->
+            def metadata = new groovy.json.JsonSlurper().parseText(zip.getInputStream(zip.getEntry('fabric.mod.json')).text)
+            if (metadata.name != 'BBS TACZ' || metadata.authors != ['McAxolotl'] || metadata.id != 'bbs_tacz' || metadata.version != project.version) throw new GradleException('Incorrect mod identity')
+            if (metadata.depends.'player-animator' != '1.0.2-rc1+1.20') throw new GradleException('Native PA backend is missing its tested dependency')
+            ['forms/TaczForm.class', 'client/forms/TaczFormRenderer.class', 'client/forms/TaczVisualPlayer.class', 'mixin/client/RecordedHandPassMixin.class'].each { file ->
+                if (zip.getEntry('mcaxolotl/bbstacz/' + file) == null) throw new GradleException("Missing standalone backend: ${file}")
+            }
+            ['ModelWeaponsMixin', 'ProceduralAnimatorFactoryMixin', 'TaczProceduralAnimator', 'ThirdPersonWeapons', 'WeaponMounts'].each { legacy ->
+                if (zip.entries().find { entry -> entry.name.endsWith('/' + legacy + '.class') } != null) throw new GradleException("Unexpected legacy backend: ${legacy}")
+            }
+            ['bbs_tacz.mixins.json', 'bbs_tacz.client.mixins.json'].each { name ->
+                def config = new groovy.json.JsonSlurper().parseText(zip.getInputStream(zip.getEntry(name)).text)
+                (config.mixins ?: config.client).each { mixin ->
+                    def path = config.package.replace('.', '/') + '/' + mixin + '.class'
+                    if (zip.getEntry(path) == null) throw new GradleException("Missing mixin: ${path}")
+                }
+            }
+            zip.entries().each { entry ->
+                if (entry.name.startsWith('com/tacz/') || entry.name.startsWith('mchorse/') || entry.name.contains('/smoke/') || entry.name.contains('bbs_tacz_smoke') || entry.name.contains('META-INF/jars/'))
+                    throw new GradleException("Unexpected bundled code: ${entry.name}")
+            }
+        }
+    }
+}
+tasks.named('check') { dependsOn tasks.named('auditJar') }
+tasks.named('sourcesJar') {
+    from('README.md', 'THIRD_PARTY_NOTICES.md', 'LICENSE')
+    from('docs') { into 'docs' }
+    from('licenses') { into 'licenses' }
+}

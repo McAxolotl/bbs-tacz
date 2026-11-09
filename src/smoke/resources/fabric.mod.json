@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "bbs_tacz_smoke",
+  "version": "1.0.0",
+  "name": "BBS TACZ development smoke harness",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "mcaxolotl.bbstacz.smoke.SmokeClient"
+    ]
+  },
+  "depends": {
+    "bbs_tacz": "*"
+  },
+  "mixins": [
+    {
+      "config": "bbs_tacz_smoke.client.mixins.json",
+      "environment": "client"
+    }
+  ]
+}
