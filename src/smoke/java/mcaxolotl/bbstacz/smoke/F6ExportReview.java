@@ -80,7 +80,7 @@ public class F6ExportReview implements ReviewClient.Scenario {
             var panel=BBSModClient.getDashboard().getPanel(UIFilmPanel.class); panel.fill(film); panel.applyRecordedKeyframes(recorder,film);
             Film saved=new Film(); saved.fromData(film.toData()); saved.setId(film.getId()); film=saved;
             var states=((TaczReplayChannels)film.replays.getList().get(0).keyframes).bbstacz$state();
-            if(withAudio()) ReviewClient.require(film.camera.getClips(mchorse.bbs_mod.camera.clips.misc.AudioClip.class).size()>=2,"F6 take did not save its actual TACZ audio cues");
+            if(withAudio()) ReviewClient.require(mcaxolotl.bbstacz.recording.NativeSoundTimeline.read(((TaczReplayChannels)recorder.keyframes).bbstacz$sounds()).size()>=2 && film.camera.getClips(mchorse.bbs_mod.camera.clips.misc.AudioClip.class).isEmpty(),"F6 take did not save native TACZ sound cues without audio clips");
             long fp=states.getKeyframes().stream().filter(k->k.getValue().firstPerson()).count();
             System.out.println("[REVIEW F6] saved FP keys="+fp+" duration="+film.calculateDuration());
             ReviewClient.require(fp>0,"Native FP recording did not survive the editor's real apply/save path");

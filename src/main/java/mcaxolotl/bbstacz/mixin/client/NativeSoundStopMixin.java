@@ -11,5 +11,5 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(SoundManager.class)
 public abstract class NativeSoundStopMixin {
     @Inject(method = "stop(Lnet/minecraft/client/resources/sounds/SoundInstance;)V", at = @At("HEAD"))
-    private void bbstacz$stop(SoundInstance sound, CallbackInfo ci) { RecordedAudio.stopped(sound); }
+    private void bbstacz$stop(SoundInstance sound, CallbackInfo ci) { mcaxolotl.bbstacz.client.NativeVideoSounds.stopped(sound); RecordedAudio.stopped(sound); }
 }

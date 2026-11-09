@@ -42,6 +42,13 @@
     "ParticleFovAccess",
     "ExportAnimationClockMixin",
     "ClockedGunDynamicsMixin",
+    "NativeSoundPlayAccess",
+    "SoundManagerAccess",
+    "SoundEngineAccess",
+    "SoundChannelAccess",
+    "NativeCapturedSoundMixin",
+    "NativeVideoSoundCaptureMixin",
+    "NativeVideoSoundEndMixin",
     "ClockedGunSchedulingMixin"
   ],
   "injectors": {

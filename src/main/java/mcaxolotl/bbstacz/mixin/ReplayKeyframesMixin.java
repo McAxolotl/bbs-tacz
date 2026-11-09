@@ -20,16 +20,19 @@ import java.util.List;
 public abstract class ReplayKeyframesMixin extends ValueGroup implements TaczReplayChannels {
     @Unique private KeyframeChannel<FrameSnapshot> bbstacz$state;
     @Unique private KeyframeChannel<String> bbstacz$commands;
+    @Unique private KeyframeChannel<String> bbstacz$sounds;
     protected ReplayKeyframesMixin(String id) { super(id); }
     @Inject(method = "<init>", at = @At("TAIL"))
     private void bbstacz$register(String id, CallbackInfo ci) {
         bbstacz$state = new KeyframeChannel<>(STATE, FrameFactory.INSTANCE);
         bbstacz$commands = new KeyframeChannel<>(COMMANDS, KeyframeFactories.STRING);
-        bbstacz$state.synced(); bbstacz$commands.synced();
-        add(bbstacz$state); add(bbstacz$commands);
+        bbstacz$sounds = new KeyframeChannel<>(SOUNDS, KeyframeFactories.STRING);
+        bbstacz$state.synced(); bbstacz$commands.synced(); bbstacz$sounds.synced();
+        add(bbstacz$state); add(bbstacz$commands); add(bbstacz$sounds);
     }
     @Override public KeyframeChannel<FrameSnapshot> bbstacz$state() { return bbstacz$state; }
     @Override public KeyframeChannel<String> bbstacz$commands() { return bbstacz$commands; }
+    @Override public KeyframeChannel<String> bbstacz$sounds() { return bbstacz$sounds; }
     @Inject(method = "apply(FLmchorse/bbs_mod/forms/entities/IEntity;Ljava/util/List;)V", at = @At("TAIL"))
     private void bbstacz$apply(float tick, IEntity entity, List<String> groups, CallbackInfo ci) {
         if (groups == null || groups.isEmpty()) ReplayBindings.bind(entity, bbstacz$state, tick);

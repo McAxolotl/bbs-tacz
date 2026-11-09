@@ -33,8 +33,10 @@ class MixinTargetsTest {
             for (var name : names) {
                 ClassNode mixin = read(root + "/" + name.getAsString());
                 AnnotationNode annotation = mixin.invisibleAnnotations.stream().filter(a -> a.desc.endsWith("/Mixin;")).findFirst().orElseThrow();
-                List<Type> types = value(annotation, "value"); assertNotNull(types);
-                ClassNode target = read(types.get(0).getInternalName());
+                List<Type> types = value(annotation, "value");
+                List<String> targetNames = value(annotation, "targets");
+                assertTrue(types != null && !types.isEmpty() || targetNames != null && !targetNames.isEmpty(), "Mixin has no target");
+                ClassNode target = read(types != null && !types.isEmpty() ? types.get(0).getInternalName() : targetNames.get(0).replace('.', '/'));
                 for (var method : mixin.methods) {
                     List<AnnotationNode> annotations = new ArrayList<>();
                     if (method.visibleAnnotations != null) annotations.addAll(method.visibleAnnotations);

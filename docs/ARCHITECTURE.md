@@ -66,9 +66,9 @@ F5 使用 `OffscreenCapture` 和 `MirrorParticles`。镜像系统隔离原生 pe
 
 `SkinTextureBridge` 将 BBS 纹理借用为原生纹理别名；`TaczVisualPlayer` 返回形态的所选别名。原生身体/手臂/袖层按各自材质绑定，无需全局“首个刷层” hook。别名每次绑定读取 BBS 当前 GL id，重载/动画由 BBS 负责，原生纹理关闭不删除 BBS 的纹理。
 
-`RecordedAudio` 在原生最终 SoundData 解析后捕获声音实例，并监听停止。停录时按实际音高重采样，保留亚 tick 起点和打断长度，再创建普通 BBS 音频片段。重录只替换当前 replay 所有的音频区间；录制中不监听旧枪声轨道。世界音频 context 跟随 controller/游戏暂停，BBS 自己管理 OpenAL 的 seek/resume/shutdown。
+`RecordedAudio` 在最终 SoundData 解析之后捕获原生资源名、随机化后的音量/音高、距离/追踪/相对声源参数及停止事件，写入同步的 `bbs_tacz:sounds` 字符串通道。回放使用 TACZ 的 `SoundPlayManager` 重建 `GunSoundInstance`；声音的相位、暂停、跳转、恢复和关闭由影片控制器持有。新录制不创建 `AudioClip`，也不写出枪声音频资产。
 
-生成 WAV 遵循 BBS 外部资产约定，不随模组分发或隐式复制进影片。存在录制音轨时，仅抑制重复的原生声音；真实射击/弹丸通知仍保留。
+F4/F6 由 BBS 原有的 Minecraft 声音监听器捕获原生实例并完成视频混音/封装；`NativeVideoSounds` 补充 one-shot 打断时间，避免换弹/检视停止后导出文件仍播放尾声。导出阶段的临时混音 WAV 仅是视频封装中间文件，不是提取后追加到影片的音频剪辑。旧版生成的音频片段仍可读取，重录只替换当前 replay 的旧片段重叠区间，保留用户和其他 replay 的轨道。重复的原生枪械播放通知在本客户端被抑制，不取消真实弹丸或场景行为。
 
 ## F6 与控制器生命周期
 

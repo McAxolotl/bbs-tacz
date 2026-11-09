@@ -19,6 +19,6 @@ public abstract class NativeSoundRecordMixin {
     }
     @Inject(method = "playClientSound(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/resources/ResourceLocation;FFIZIZZ)Lcom/tacz/guns/client/sound/GunSoundInstance;", at = @At("RETURN"))
     private static void bbstacz$record(Entity entity, ResourceLocation name, float volume, float pitch, int distance, boolean mono, int limit, boolean track, boolean relative, CallbackInfoReturnable<GunSoundInstance> ci) {
-        RecordedAudio.capture(entity, ci.getReturnValue());
+        RecordedAudio.capture(entity, name, volume, pitch, distance, mono, limit, track, relative, ci.getReturnValue());
     }
 }

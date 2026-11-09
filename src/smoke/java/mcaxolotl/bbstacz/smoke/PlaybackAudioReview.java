@@ -1,78 +1,87 @@
 package mcaxolotl.bbstacz.smoke;
 
 import com.tacz.guns.api.item.builder.GunItemBuilder;
+import com.tacz.guns.client.sound.GunSoundInstance;
 import com.tacz.guns.client.sound.SoundPlayManager;
 import com.tacz.guns.resource.modifier.AttachmentPropertyManager;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import mcaxolotl.bbstacz.client.RecordedAudio;
+import mcaxolotl.bbstacz.forms.TaczForm;
+import mcaxolotl.bbstacz.mixin.client.SoundChannelAccess;
+import mcaxolotl.bbstacz.mixin.client.SoundEngineAccess;
+import mcaxolotl.bbstacz.mixin.client.SoundManagerAccess;
+import mcaxolotl.bbstacz.recording.NativeSoundTimeline;
+import mcaxolotl.bbstacz.recording.TaczReplayChannels;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.clips.misc.AudioClip;
 import mchorse.bbs_mod.film.Film;
+import mchorse.bbs_mod.film.FirstPersonFilmController;
 import mchorse.bbs_mod.film.replays.Replay;
-import mcaxolotl.bbstacz.forms.TaczForm;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
+import org.lwjgl.openal.AL10;
 
-/** Record actual TACZ sound calls through BBS's public take API and inspect the saved/loaded audio timeline. */
+/** Native GunSoundInstance play/pause/seek/resume/stop after a serialized take. No generated audio clips/assets. */
 public final class PlaybackAudioReview implements ReviewClient.Scenario {
     private Film film;
-    private com.tacz.guns.client.sound.GunSoundInstance inspected;
-    private mchorse.bbs_mod.film.FirstPersonFilmController playback;
-    private AudioClip shoot;
-    private mchorse.bbs_mod.audio.SoundPlayer player;
-    private net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext renderContext;
-    public PlaybackAudioReview() { net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.LAST.register(context -> renderContext=context); }
-    @Override public boolean tick(Minecraft client, int tick) throws Exception {
-        if(tick==0) {
+    private GunSoundInstance inspected,voice;
+    private FirstPersonFilmController playback;
+    private NativeSoundTimeline.Cue reload;
+    private int sourceState(Minecraft client,GunSoundInstance sound) throws Exception {
+        var engine=((SoundManagerAccess)client.getSoundManager()).bbstacz$engine();
+        var handle=((SoundEngineAccess)engine).bbstacz$channels().get(sound);
+        ReviewClient.require(handle!=null,"Native replay sound acquired no OpenAL channel");
+        var state=new CompletableFuture<Integer>(); handle.execute(channel->state.complete(AL10.alGetSourcei(((SoundChannelAccess)channel).bbstacz$source(),AL10.AL_SOURCE_STATE)));
+        return state.get(3,TimeUnit.SECONDS);
+    }
+    @Override public boolean tick(Minecraft client,int tick) throws Exception {
+        if (tick==0) {
             var gun=GunItemBuilder.create().setId(new ResourceLocation("tacz","ak47")).setAmmoCount(30).setAmmoInBarrel(true).build();
             client.player.setItemSlot(EquipmentSlot.MAINHAND,gun); AttachmentPropertyManager.postChangeEvent(client.player,gun);
-            film=new Film(); film.setId("bbs-tacz-audio-review-"+System.currentTimeMillis());
+            film=new Film(); film.setId("bbs-tacz-native-audio-review-"+System.currentTimeMillis());
             var replay=new Replay("sound_player"); replay.form.set(new TaczForm()); replay.fp.set(true); film.replays.add(replay);
             BBSModClient.getFilms().startRecording(film,0,0,false); BBSModClient.getFilms().getRecorder().countdown=0;
         }
-        if(tick==20) inspected=SoundPlayManager.playAnimationSound(client.player,new ResourceLocation("tacz","ak47/ak47_reload_mvt"),0.8f,1.15f,30);
-        if(tick==22) SoundPlayManager.playClientSound(client.player,new ResourceLocation("tacz","ak47/ak47_shoot"),0.7f,0.95f,30);
-        if(tick==26 && inspected!=null) inspected.setStop();
-        if(tick==35) {
+        if (tick==20) inspected=SoundPlayManager.playAnimationSound(client.player,new ResourceLocation("tacz","ak47/ak47_reload_mvt"),0.8f,1.15f,30);
+        if (tick==22) SoundPlayManager.playClientSound(client.player,new ResourceLocation("tacz","ak47/ak47_shoot"),0.7f,0.95f,30);
+        if (tick==26 && inspected!=null) inspected.setStop();
+        if (tick==35) {
             var recorder=BBSModClient.getFilms().stopRecording();
-            Film copy=new Film(); copy.fromData(recorder.film.toData()); copy.setId(film.getId());
-            var clips=copy.camera.getClips(AudioClip.class);
-            System.out.println("[REVIEW audio] soundInstance="+inspected+" saved audio clips="+clips.size());
-            ReviewClient.require(inspected!=null,"Native TACZ test sound resource did not resolve");
-            ReviewClient.require(clips.size()>=2,"No TACZ audio was serialized into the replay (captured="+clips.size()+")");
-            ReviewClient.require(clips.stream().allMatch(c->c.audio.get()!=null&&c.duration.get()>0),"Invalid saved TACZ audio clip");
-            var reload=clips.stream().filter(c->c.title.get().contains("reload_mvt")).findFirst().orElseThrow();
-            var buffer=BBSModClient.getSounds().get(reload.audio.get(),false);
-            ReviewClient.require(buffer!=null && buffer.getDuration()<0.38f,"Native interruption was not baked into the sound tail");
-            shoot=clips.stream().filter(c->c.title.get().contains("ak47_shoot")).findFirst().orElseThrow();
-            var out=java.nio.file.Path.of("review-recorded-tacz-audio.wav");
-            ReviewClient.require(mchorse.bbs_mod.audio.AudioRenderer.renderAudio(out.toFile(),clips,copy.calculateDuration(),48000,0,0),"BBS offline audio mixing failed");
-            mchorse.bbs_mod.audio.Wave mixed; try(var input=java.nio.file.Files.newInputStream(out)) { mixed=new mchorse.bbs_mod.audio.wav.WaveReader().read(input); }
-            long nonzero=0; for(byte b:mixed.data) if(b!=0) nonzero++;
-            ReviewClient.require(nonzero>1000,"Serialized audio rendered only silence");
-            copy.replays.getList().get(0).keyframes.copyOver(recorder.keyframes,0);
-            for(var clip:clips) ReviewClient.require(BBSModClient.getSounds().get(clip.audio.get(),false)!=null,"Serialized audio asset failed to load");
-            playback=new mchorse.bbs_mod.film.FirstPersonFilmController(copy); playback.tick=shoot.tick.get()+1; playback.paused=true;
-            BBSModClient.getFilms().add(playback);
-            System.out.println("[REVIEW audio] baked reload seconds="+buffer.getDuration()+" offline nonzero bytes="+nonzero);
+            film.replays.getList().get(0).keyframes.copyOver(recorder.keyframes,0);
+            var copy=new Film(); copy.fromData(film.toData()); copy.setId(film.getId());
+            ((TaczReplayChannels)copy.replays.getList().get(0).keyframes).bbstacz$state().insert(80,mcaxolotl.bbstacz.recording.FrameSnapshot.EMPTY);
+            var cues=NativeSoundTimeline.read(((TaczReplayChannels)copy.replays.getList().get(0).keyframes).bbstacz$sounds());
+            ReviewClient.require(inspected!=null && cues.size()>=2,"Native sound cues did not survive film serialization");
+            ReviewClient.require(copy.camera.getClips(AudioClip.class).isEmpty(),"Native sound was extracted to an audio clip");
+            reload=cues.stream().filter(c->c.name().endsWith("reload_mvt")).findFirst().orElseThrow();
+            ReviewClient.require(reload.end()-reload.tick()<8,"Native interruption was not serialized");
+            client.player.setItemSlot(EquipmentSlot.MAINHAND,ItemStack.EMPTY);
+            playback=new FirstPersonFilmController(copy); playback.tick=(int)reload.tick()+1; playback.paused=true; BBSModClient.getFilms().add(playback);
+            System.out.println("[REVIEW native audio] serialized cues="+cues.size()+" reload ticks="+(reload.end()-reload.tick()));
         }
-        if(tick==36) {
-            ReviewClient.require(renderContext!=null,"No native world render context was observed");
-            playback.render(renderContext);
-            player=BBSModClient.getSounds().getPlayers().stream().filter(p->p.getOwner()==shoot).findFirst().orElseThrow();
-            playback.paused=false; playback.render(renderContext);
-            ReviewClient.require(player.isPlaying() && org.lwjgl.openal.AL10.alGetSourcef(player.getSource(),org.lwjgl.openal.AL10.AL_GAIN)>0,"Native BBS audio playback is not audible");
-            playback.paused=true; playback.render(renderContext);
-            ReviewClient.require(player.isPaused(),"Paused world replay keeps playing TACZ audio");
-            playback.tick=shoot.tick.get()+2; playback.render(renderContext);
-            ReviewClient.require(player.isPaused() && Math.abs(player.getPlaybackPosition()-0.1f)<0.06f,"Paused seek did not reposition the audio source");
-            playback.paused=false; playback.render(renderContext);
-            ReviewClient.require(player.isPlaying(),"Resuming the replay did not resume TACZ audio");
-            playback.paused=true; playback.tick=shoot.tick.get()+shoot.duration.get(); playback.render(renderContext);
-            ReviewClient.require(!player.isPlaying(),"Seek outside the sound clip left stale TACZ audio running");
-            BBSModClient.getFilms().remove(playback.film.getId());
-            ReviewClient.require(BBSModClient.getSounds().getPlayers().stream().noneMatch(p->p.getOwner()==shoot),"Stopped replay retained its OpenAL audio owner");
-            System.out.println("[REVIEW audio] runtime play/pause/seek/resume/stop passed");
-            return true;
+        if (tick==36) { RecordedAudio.playback(playback,0); ReviewClient.require(RecordedAudio.voices(playback).isEmpty(),"Paused seek started an audible cue"); }
+        if (tick==37) { playback.paused=false; RecordedAudio.playback(playback,0); voice=RecordedAudio.voices(playback).stream().filter(s->s.getRegistryName().toString().equals(reload.name())).findFirst().orElseThrow(); }
+        if (tick==38) {
+            playback.paused=true; RecordedAudio.playback(playback,0);
+            ReviewClient.require(voice.getSound().getPath().getPath().startsWith("tacz_sounds/"),"Replay used a baked audio asset instead of TACZ's native sound");
+            int state=sourceState(client,voice); System.out.println("[REVIEW native audio] paused source state="+state+" film tick="+playback.getTick()+" source="+voice.getRegistryName()+" streaming="+voice.getSound().shouldStream());
+            ReviewClient.require(state==AL10.AL_PAUSED,"Native replay source failed to pause (state="+state+")");
+        }
+        if (tick==39) {
+            playback.paused=false; RecordedAudio.playback(playback,0);
+            ReviewClient.require(sourceState(client,voice)==AL10.AL_PLAYING,"Native replay source failed to resume");
+        }
+        if (tick==40) {
+            playback.paused=true; playback.tick=(int)Math.ceil(reload.end()+40); RecordedAudio.playback(playback,0);
+            ReviewClient.require(RecordedAudio.voices(playback).isEmpty(),"Seeking outside cues kept stale gun sounds alive");
+        }
+        if (tick==41) { playback.tick=(int)reload.tick()+1; playback.paused=false; RecordedAudio.playback(playback,0); ReviewClient.require(!RecordedAudio.voices(playback).isEmpty(),"Backward seek failed to reconstruct native sound"); }
+        if (tick==42) {
+            BBSModClient.getFilms().remove(film.getId()); ReviewClient.require(RecordedAudio.voices(playback).isEmpty(),"Stopped film retained its native audio owner");
+            System.out.println("[REVIEW native audio] OpenAL play/pause/seek/resume/stop PASS"); return true;
         }
         return false;
     }
