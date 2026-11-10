@@ -22,6 +22,10 @@ import net.minecraft.world.phys.Vec3;
 public final class TaczVisualPlayer extends RemotePlayer {
     public boolean slim;
     private float lean, previousLean;
+    private int fallFlyingTicks;
+    private Vec3 previousVelocity=Vec3.ZERO, currentVelocity=Vec3.ZERO;
+    private float previousBodyYaw, bodyYaw;
+    private float previousViewYaw, viewYaw, previousViewPitch, viewPitch;
     private ResourceLocation skin, selectedSkin;
     public void selectedSkin(ResourceLocation skin) { selectedSkin = skin; }
     public TaczVisualPlayer(ClientLevel level, GameProfile profile, boolean slim) { super(level, profile); this.slim = slim; noPhysics = true; }
@@ -29,6 +33,15 @@ public final class TaczVisualPlayer extends RemotePlayer {
     @Override public ResourceLocation getSkinTextureLocation() {
         return selectedSkin != null ? selectedSkin : skin != null ? skin : new ResourceLocation("minecraft", "textures/entity/player/" + (slim ? "slim/alex.png" : "wide/steve.png"));
     }
+    @Override public float getViewYRot(float delta) {
+        return net.minecraft.util.Mth.rotLerp(delta,previousViewYaw,viewYaw)-net.minecraft.util.Mth.rotLerp(delta,previousBodyYaw,bodyYaw);
+    }
+    @Override public float getViewXRot(float delta) { return net.minecraft.util.Mth.lerp(delta,previousViewPitch,viewPitch); }
+    @Override public Vec3 getDeltaMovementLerped(float delta) {
+        float yaw=net.minecraft.util.Mth.rotLerp(delta,previousBodyYaw,bodyYaw);
+        return previousVelocity.lerp(currentVelocity,delta).yRot((float)Math.toRadians(yaw));
+    }
+    @Override public int getFallFlyingTicks() { return fallFlyingTicks; }
     @Override public float getSwimAmount(float delta) { return previousLean + (lean - previousLean) * delta; }
     public void sync(IEntity source, FrameSnapshot frame) { sync(source, frame, 0); }
     public void sync(IEntity source, FrameSnapshot frame, float delta) {
@@ -47,7 +60,8 @@ public final class TaczVisualPlayer extends RemotePlayer {
             setItemSlot(slot, (channel != null && !channel.isEmpty() ? channel.interpolate(tick, net.minecraft.world.item.ItemStack.EMPTY) : source.getEquipmentStack(slot)).copy());
         }
         setPos(source.getX(), source.getY(), source.getZ()); xo = xOld = source.getPrevX(); yo = yOld = source.getPrevY(); zo = zOld = source.getPrevZ();
-        setYRot(0); yRotO = 0; yBodyRot = yBodyRotO = 0;
+        // BBS owns body yaw outside the player renderer. View/velocity remain in that body's local frame.
+        setYRot(source.getYaw()-source.getBodyYaw()); yRotO = source.getPrevYaw()-source.getPrevBodyYaw(); yBodyRot = yBodyRotO = 0;
         yHeadRot = source.getHeadYaw() - source.getBodyYaw(); yHeadRotO = source.getPrevHeadYaw() - source.getPrevBodyYaw();
         setXRot(source.getPitch()); xRotO = source.getPrevPitch();
         setOnGround(source.isOnGround()); setShiftKeyDown(source.isSneaking()); setSprinting(source.isSprinting()); setSwimming(source.isSwimming());
@@ -56,6 +70,8 @@ public final class TaczVisualPlayer extends RemotePlayer {
         ((ForcePoseInjection) (Object) this).tacz$setForcedPose(crawl ? Pose.SWIMMING : null);
         setPose(crawl ? Pose.SWIMMING : source.getEntityPose());
         tickCount = source.getAge();
+        var motion=frame==null?null:frame.humanoid().get("motion");
+        fallFlyingTicks=motion!=null?Math.max(0,(int)motion.at(1)):source instanceof MCEntity mc&&mc.getMcEntity() instanceof net.minecraft.world.entity.LivingEntity live?live.getFallFlyingTicks():0;
         previousLean = source.getLeaningPitch(0); lean = source.getLeaningPitch(1);
         if (frame != null && frame.humanoid().containsKey("motion")) lean = previousLean = frame.humanoid().get("motion").at(0);
         else if (crawl && frame != null) lean = previousLean = 1;
@@ -63,7 +79,12 @@ public final class TaczVisualPlayer extends RemotePlayer {
             a.setPrevSpeed(b.getPrevSpeed()); a.setSpeed(b.getSpeed()); a.setPos(b.getPos());
         }
         attackAnim = source.getHandSwingProgress(1); oAttackAnim = source.getHandSwingProgress(0);
-        var velocity = source.getVelocity(); setDeltaMovement(velocity.x, velocity.y, velocity.z);
+        previousBodyYaw=source.getPrevBodyYaw(); bodyYaw=source.getBodyYaw();
+        if(source instanceof MCEntity mc&&mc.getMcEntity() instanceof AbstractClientPlayer live) {
+            previousViewYaw=live.getViewYRot(0); viewYaw=live.getViewYRot(1); previousViewPitch=live.getViewXRot(0); viewPitch=live.getViewXRot(1);
+        } else { previousViewYaw=viewYaw=source.getYaw(); previousViewPitch=viewPitch=source.getPitch(); }
+        previousVelocity=source instanceof MCEntity mc&&mc.getMcEntity() instanceof AbstractClientPlayer live?live.getDeltaMovementLerped(0):source.lerpVelocity(0);
+        currentVelocity=source.getVelocity(); setDeltaMovement(currentVelocity.yRot((float)Math.toRadians(bodyYaw)));
         getAbilities().flying = source.isFlying();
         var data = IGunOperator.fromLivingEntity(this).getDataHolder();
         data.setCurrentGunItem(this::getMainHandItem); data.isCrawling = crawl;

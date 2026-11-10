@@ -40,7 +40,7 @@ public final class ThirdPersonPose {
             model.prepareMobModel(entity, limb, speed, delta);
             model.setupAnim(entity, limb, speed, entity.tickCount + delta, yaw, entity.getViewXRot(delta));
             Map<String, PartPose> out = new LinkedHashMap<>();
-            out.put("motion", new PartPose(new float[]{entity.getSwimAmount(delta),0,0,0,0,0,0,0,0,1,1,1,0,0,0,1},true,false));
+            out.put("motion", new PartPose(new float[]{entity.getSwimAmount(delta),entity.getFallFlyingTicks(),0,0,0,0,0,0,0,1,1,1,0,0,0,1},true,false));
             out.put("head", NativePose.capture(model.head)); out.put("torso", NativePose.capture(model.body));
             out.put("right_arm", NativePose.capture(model.rightArm)); out.put("left_arm", NativePose.capture(model.leftArm));
             out.put("right_leg", NativePose.capture(model.rightLeg)); out.put("left_leg", NativePose.capture(model.leftLeg));
