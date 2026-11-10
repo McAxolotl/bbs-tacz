@@ -100,7 +100,9 @@ Gradle 使用 Java 21；开发 Minecraft 进程使用 Java 17。
 scripts/verify-replays.sh
 ```
 
-**2026-11-10 验证：71 项 JUnit、40 项原生专项、smoke `PASS 66`、8 个实际视频及覆盖审计通过。**
+**2026-11-10 历史验证：71 项 JUnit、40 项原生专项、smoke `PASS 66`、8 个实际视频及覆盖审计通过。**
+
+随后按用户要求清理了录屏试验、视频和自动生成的测试世界；以上是当时的回归结果，不表示这些媒体仍在磁盘上。需要复核时应重新运行测试生成新证据。清理审查范围与本次静态验证见 `docs/CLEANUP_REVIEW.md`。
 
 **验证入口：** `scripts/verify-replays.sh` 按清单串行构建、运行原生专项、smoke、媒体解码和覆盖账本审计，不并行启动 Minecraft。本轮结果及受控/原生/未验证边界见 `docs/SCENARIO_COVERAGE.md`；`docs/REPLAY_EXPORT_REVIEW.md` 保留 2026-11-09 的历史交付记录。
 
