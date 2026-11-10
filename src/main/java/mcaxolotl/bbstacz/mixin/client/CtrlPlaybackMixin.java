@@ -23,7 +23,7 @@ public abstract class CtrlPlaybackMixin {
     private void bbstacz$atomicPlay(CallbackInfo ci) {
         if(BBSModClient.getDashboardIfCreated()==null || !ClientNetwork.isIsBBSModOnServer()) return;
         var panel=BBSModClient.getDashboard().getPanel(UIFilmPanel.class); var film=panel.getData();
-        var fp=film==null?null:film.getFirstPersonReplay(); if(fp==null||!(fp.form.get() instanceof TaczForm)) return;
+        if(film==null || film.replays.getList().stream().noneMatch(replay->replay.enabled.get()&&replay.form.get() instanceof TaczForm)) return;
         String id=film.getId(); mcaxolotl.bbstacz.BBSTaczAddon.LOGGER.debug("Ctrl start {}",id); var films=BBSModClient.getFilms(); var controller=films.getController(id);
         if(controller!=null && !(controller instanceof FrozenFilmController)) { CtrlPlaybackStarts.cancel(id); Films.playFilm(id,false); ci.cancel(); return; }
         if(CtrlPlaybackStarts.pending(id)) { CtrlPlaybackStarts.cancel(id); ClientNetwork.sendActionState(id,ActionState.STOP,0); ci.cancel(); return; }

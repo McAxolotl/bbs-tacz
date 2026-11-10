@@ -19,10 +19,10 @@ public final class F6ServerStart {
             server.execute(() -> {
                 if (!PermissionUtils.arePanelsAllowed(server, player)) return;
                 var film = BBSMod.getFilms().load(id);
-                var replay = film == null ? null : film.getFirstPersonReplay();
-                if (replay == null || !(replay.form.get() instanceof TaczForm)) return;
+                boolean tacz=film!=null&&film.replays.getList().stream().anyMatch(track->track.enabled.get()&&track.form.get() instanceof TaczForm);
+                if (!tacz) return;
                 BBSMod.getActions().stop(id);
-                ServerNetwork.sendPlayFilm(player, player.serverLevel(), id, false);
+                ServerNetwork.sendPlayFilm(player, player.serverLevel(), id, !ctrl&&!film.hasFirstPerson()&&!film.camera.get().isEmpty());
                 var playback = BBSMod.getActions().getPlayer(id);
                 if (playback != null) playback.playing = false;
                 if(ctrl) CtrlClockSync.watch(player,playback);

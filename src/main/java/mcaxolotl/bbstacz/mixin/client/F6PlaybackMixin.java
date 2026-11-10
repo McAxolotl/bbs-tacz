@@ -30,17 +30,16 @@ public abstract class F6PlaybackMixin {
     @Shadow private boolean firstTickPaused;
     @ModifyArg(method = "start", at = @At(value = "INVOKE", target = "Lmchorse/bbs_mod/film/WorldVideoExportSession;begin(IIIJ)Z"), index = 3)
     private long bbstacz$startupDelay(long delay) {
-        var replay = film == null ? null : film.getFirstPersonReplay();
+        boolean tacz=film!=null&&film.replays.getList().stream().anyMatch(replay->replay.enabled.get()&&replay.form.get() instanceof TaczForm);
         // Even with no cosmetic delay, asynchronous playback has to reach the warm-up state machine.
-        return replay != null && replay.form.get() instanceof TaczForm ? Math.max(1, delay) : delay;
+        return tacz ? Math.max(1, delay) : delay;
     }
     @Unique private String bbstacz$pendingFilm;
     @Unique private F6Starts.Ticket bbstacz$ticket;
     @Unique private long bbstacz$requestedAt;
     @Inject(method = "start", at = @At(value = "INVOKE", target = "Lmchorse/bbs_mod/film/Films;playFilm(Ljava/lang/String;Z)V"))
     private void bbstacz$unfreeze(String filmId, Film film, CallbackInfoReturnable<Boolean> ci) {
-        var replay = film == null ? null : film.getFirstPersonReplay();
-        if (filmId == null || replay == null || !(replay.form.get() instanceof TaczForm)) return;
+        if (filmId==null || film==null || film.replays.getList().stream().noneMatch(replay->replay.enabled.get()&&replay.form.get() instanceof TaczForm)) return;
         bbstacz$pendingFilm = filmId; bbstacz$requestedAt = System.currentTimeMillis(); bbstacz$ticket = F6Starts.request(filmId);
         var films = BBSModClient.getFilms();
         films.unfreeze(filmId);
@@ -77,7 +76,7 @@ public abstract class F6PlaybackMixin {
         ci.setReturnValue(true);
     }
 
-    @Inject(method = "onRecordingStarted", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "onRecordingStarted", at = @At("HEAD"))
     private void bbstacz$frameZero(org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
         if (bbstacz$pendingFilm == null) return;
         var controller=BBSModClient.getFilms().getController(bbstacz$pendingFilm);
@@ -89,7 +88,17 @@ public abstract class F6PlaybackMixin {
             world.paused=false;
             if (ClientNetwork.isIsBBSModOnServer()) ClientNetwork.sendActionState(id,ActionState.PLAY,world.getTick());
         });
-        ci.cancel();
+        // Leave the native method running: it also reapplies the recorder's framebuffer size.
+    }
+
+    @Redirect(method = "onRecordingStarted", at = @At(value = "INVOKE", target = "Lmchorse/bbs_mod/film/BaseFilmController;togglePause()V"))
+    private void bbstacz$deferClientResume(mchorse.bbs_mod.film.BaseFilmController controller) {
+        if (bbstacz$pendingFilm == null) controller.togglePause();
+    }
+
+    @Redirect(method = "onRecordingStarted", at = @At(value = "INVOKE", target = "Lmchorse/bbs_mod/network/ClientNetwork;sendActionState(Ljava/lang/String;Lmchorse/bbs_mod/actions/ActionState;I)V"))
+    private void bbstacz$deferServerResume(String id, ActionState state, int tick) {
+        if (bbstacz$pendingFilm == null) ClientNetwork.sendActionState(id, state, tick);
     }
 
     @Inject(method = "isFinished", at = @At("HEAD"), cancellable = true)
