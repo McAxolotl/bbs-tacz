@@ -42,7 +42,20 @@ class MixinTargetsTest {
                     if (method.visibleAnnotations != null) annotations.addAll(method.visibleAnnotations);
                     if (method.invisibleAnnotations != null) annotations.addAll(method.invisibleAnnotations);
                     for (var injection : annotations) {
-                        if (injection.desc.endsWith("/Inject;")) {
+                        if (injection.desc.endsWith("/WrapMethod;")) {
+                            List<String> selectors=value(injection,"method");
+                            for(String selector:selectors) {
+                                var candidates=findMethods(target,selector,new HashSet<>());
+                                Type[] args=Type.getArgumentTypes(method.desc);
+                                assertTrue(candidates.stream().anyMatch(candidate -> {
+                                    Type[] nativeArgs=Type.getArgumentTypes(candidate.desc);
+                                    return args.length==nativeArgs.length+1
+                                        && java.util.Arrays.equals(java.util.Arrays.copyOf(args,nativeArgs.length),nativeArgs)
+                                        && Type.getReturnType(method.desc).equals(Type.getReturnType(candidate.desc));
+                                }),"Invalid method wrapper "+selector);
+                                assertEquals("com.llamalad7.mixinextras.injector.wrapoperation.Operation",args[args.length-1].getClassName()); checked++;
+                            }
+                        } else if (injection.desc.endsWith("/Inject;")) {
                             List<String> selectors = value(injection, "method");
                             for (String selector : selectors) {
                                 assertTrue(findMethod(target, selector, new HashSet<>()), root + "/" + name.getAsString() + " -> " + selector);

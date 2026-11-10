@@ -14,7 +14,8 @@
     "ActionPlayerSeekAccess",
     "TaczActionTimingMixin",
     "TaczFilmDurationMixin",
-    "ActionManagerListMixin"
+    "ActionManagerListMixin",
+    "FilmStorageMixin"
   ],
   "injectors": {
     "defaultRequire": 1

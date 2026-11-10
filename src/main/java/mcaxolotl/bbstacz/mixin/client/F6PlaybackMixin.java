@@ -52,7 +52,8 @@ public abstract class F6PlaybackMixin {
     private void bbstacz$serverHold(String id, boolean camera) {
         if (bbstacz$pendingFilm != null && ClientNetwork.isIsBBSModOnServer()) {
             // The editor's latest FP flag/form/channels may not be on disk yet. The native
-            // chunked SAVE packets precede START on the same connection/server task queue.
+            // chunked SAVE executes on the packet thread before START is enqueued on the server.
+            // FilmStorageMixin excludes later retry SAVEs while that server task reads its gzip.
             // Keep BBS's repository permission checks instead of adding an unbounded payload.
             ContentType.FILMS.getRepository().save(id,film.toData().asMap());
             var buffer=PacketByteBufs.create(); buffer.writeUtf(id); ClientPlayNetworking.send(F6ServerStart.ID,buffer);
