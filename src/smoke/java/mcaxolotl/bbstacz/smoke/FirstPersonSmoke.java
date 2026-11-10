@@ -111,7 +111,7 @@ final class FirstPersonSmoke {
             playback.tick = 60;
             var target = FirstPersonPlayback.target(0);
             require(target != null, "FP frame was lost at the native refit boundary");
-            var fov = client.gameRenderer.getClass().getDeclaredMethod("getFov", net.minecraft.client.Camera.class, float.class, boolean.class); fov.setAccessible(true);
+            var fov = client.gameRenderer.getClass().getDeclaredMethod(net.fabricmc.loader.api.FabricLoader.getInstance().getMappingResolver().mapMethodName("intermediary", "net.minecraft.class_757", "method_3196", "(Lnet/minecraft/class_4184;FZ)D"), net.minecraft.client.Camera.class, float.class, boolean.class); fov.setAccessible(true);
             double actual = (double) fov.invoke(client.gameRenderer, client.gameRenderer.getMainCamera(), 0f, true);
             require(target.frame().worldFov() <= 0 || Math.abs(actual-target.frame().worldFov()) < 1e-4, "Native FOV modifiers overwrote the recorded FOV");
         } else if (tick >= 112) {

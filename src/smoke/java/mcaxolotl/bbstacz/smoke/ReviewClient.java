@@ -13,12 +13,14 @@ public final class ReviewClient implements ClientModInitializer {
     private static boolean running;
     public static boolean isRunning() { return running; }
     public interface Scenario { boolean tick(Minecraft client, int tick) throws Exception; default int timeoutTicks() { return 1400; } }
-    private boolean creating, finished;
+    private boolean creating, finished, capturePrepared;
+    private int captureHold;
     private final long startedAt = System.currentTimeMillis();
     private int tick;
     private Scenario scenario;
     @Override public void onInitializeClient() {
-        String name = System.getProperty("bbstacz.review");
+        String requested = System.getProperty("bbstacz.review");
+        final String name = requested != null ? requested : ObsReviewSession.requestedScenario();
         if (name == null || !name.matches("[A-Za-z][A-Za-z0-9_]*")) return;
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (finished) return;
@@ -37,12 +39,27 @@ public final class ReviewClient implements ClientModInitializer {
                 }
                 if (!creating || client.player == null || !client.gameRenderer.getMainCamera().isInitialized() || TimelessAPI.getAllClientGunIndex().isEmpty()) return;
                 if (scenario == null) {
+                    if (ObsReviewSession.enabled() && !capturePrepared) {
+                        capturePrepared = true;
+                        org.lwjgl.glfw.GLFW.glfwSetWindowTitle(client.getWindow().getWindow(), "BBS TACZ - Prism verification");
+                        client.getWindow().setWindowed(1280, 720);
+                        ObsReviewSession.status("READY", 0, "Waiting for OBS window/audio capture handshake");
+                        }
+                    if (!ObsReviewSession.released()) return;
                     client.setScreen(null);
                     running = true;
                     scenario = (Scenario) Class.forName("mcaxolotl.bbstacz.smoke." + name).getDeclaredConstructor().newInstance();
                 }
+                if (captureHold > 0) {
+                    if (--captureHold == 0) finish(client, name, "PASS");
+                    return;
+                }
                 if (tick > scenario.timeoutTicks()) throw new AssertionError("Native review timed out");
-                if (scenario.tick(client, tick++)) finish(client, name, "PASS");
+                if (tick % 20 == 0) ObsReviewSession.status("RUNNING", tick, "Native assertions active; not yet passed");
+                if (scenario.tick(client, tick++)) {
+                    if (ObsReviewSession.enabled()) { captureHold = 40; ObsReviewSession.status("ASSERTIONS_DONE", tick, "Assertions passed; teardown still pending"); }
+                    else finish(client, name, "PASS");
+                }
             } catch (Throwable failure) { failure.printStackTrace(); finish(client, name, "FAIL " + failure); }
         });
     }
@@ -60,6 +77,7 @@ public final class ReviewClient implements ClientModInitializer {
             }
         } catch (Exception failure) { failure.printStackTrace(); result = "FAIL native teardown: " + failure; }
         try { Files.writeString(Path.of("bbs-tacz-review-" + name + ".txt"), result + "\n"); } catch (Exception e) { e.printStackTrace(); }
+        ObsReviewSession.status(result.equals("PASS") ? "PASS" : "FAIL", tick, result);
         client.stop();
     }
     private boolean videoActive() { return mchorse.bbs_mod.BBSModClient.getVideoRecorder() != null && mchorse.bbs_mod.BBSModClient.getVideoRecorder().isRecording(); }

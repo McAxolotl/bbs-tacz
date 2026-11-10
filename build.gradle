@@ -199,3 +199,21 @@ tasks.named('sourcesJar') {
     from('docs') { into 'docs' }
     from('licenses') { into 'licenses' }
 }
+
+// Launcher-only verification companion. Never included in build/libs or the published addon.
+tasks.register('smokeJar', Jar) {
+    dependsOn tasks.named('smokeClasses')
+    from sourceSets.smoke.output
+    archiveBaseName = 'bbs-tacz-review'
+    archiveClassifier = 'dev'
+    destinationDirectory = layout.buildDirectory.dir('review')
+}
+tasks.register('remapSmokeJar', net.fabricmc.loom.task.RemapJarTask) {
+    dependsOn tasks.named('smokeJar')
+    inputFile = tasks.named('smokeJar').flatMap { it.archiveFile }
+    archiveBaseName = 'bbs-tacz-review'
+    archiveClassifier = ''
+    destinationDirectory = layout.buildDirectory.dir('review')
+    classpath.from(sourceSets.smoke.compileClasspath)
+    addNestedDependencies = false
+}

@@ -34,6 +34,7 @@ final class NativePreviewSmoke {
             PoseStack pose = new PoseStack(); pose.translate(0, crawl ? 0.6 : 0.15, -8); pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(yaw));
             renderer.render(new FormRenderingContext().set(null, source, pose, 15728880, OverlayTexture.NO_OVERLAY, 0.5f));
             try (var image = Screenshot.takeScreenshot(target)) {
+                ObsReviewSession.evidence(image);
                 int pixels = 0; int background = image.getPixelRGBA(0, 0);
                 for (int y = 0; y < image.getHeight(); y++) for (int x = 0; x < image.getWidth(); x++) if (image.getPixelRGBA(x,y) != background) pixels++;
                 if(file!=null) image.writeToFile(Path.of(file)); return pixels;
@@ -61,6 +62,7 @@ final class NativePreviewSmoke {
             }
             renderer.renderArm(pose,15728880,client.player,hand);
             try(var image=Screenshot.takeScreenshot(target)) {
+                ObsReviewSession.evidence(image);
                 int magenta=0;
                 for(int y=0;y<512;y++) for(int x=0;x<512;x++) { int c=image.getPixelRGBA(x,y); if((c&255)>80 && ((c>>8)&255)<50 && ((c>>16)&255)>80) magenta++; }
                 image.writeToFile(Path.of(file)); return magenta;

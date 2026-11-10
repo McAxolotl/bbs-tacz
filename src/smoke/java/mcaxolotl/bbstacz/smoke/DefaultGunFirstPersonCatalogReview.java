@@ -92,7 +92,7 @@ public final class DefaultGunFirstPersonCatalogReview implements ReviewClient.Sc
             ThirdPersonMuzzleParticleManager.currentEntity=client.player; MuzzleFlashRender.isSelf=false; ShellRender.isSelf=false;
             var pose=new PoseStack(); pose.translate(0,-0.5,-8); pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(35));
             var provider=FormUtilsClient.getProvider(); model.render(pose,gun,ItemDisplayContext.FIRST_PERSON_RIGHT_HAND,RenderType.entityCutout(texture),15728880,OverlayTexture.NO_OVERLAY,provider); provider.endBatch();
-            try(var image=Screenshot.takeScreenshot(target)) { int pixels=0,background=image.getPixelRGBA(0,0); for(int y=0;y<64;y++) for(int x=0;x<64;x++) if(image.getPixelRGBA(x,y)!=background) pixels++; return pixels; }
+            try(var image=Screenshot.takeScreenshot(target)) { ObsReviewSession.evidence(image); int pixels=0,background=image.getPixelRGBA(0,0); for(int y=0;y<64;y++) for(int x=0;x<64;x++) if(image.getPixelRGBA(x,y)!=background) pixels++; return pixels; }
         } finally {
             ThirdPersonMuzzleParticleManager.currentEntity=oldEntity; MuzzleFlashRender.isSelf=muzzle; ShellRender.isSelf=shell; target.destroyBuffers(); client.getMainRenderTarget().bindWrite(true); client.gameRenderer.lightTexture().turnOffLightLayer();
             view.popPose(); RenderSystem.applyModelViewMatrix(); RenderSystem.setProjectionMatrix(projection,sorting);
