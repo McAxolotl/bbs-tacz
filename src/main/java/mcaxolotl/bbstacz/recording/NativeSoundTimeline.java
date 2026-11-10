@@ -14,6 +14,14 @@ public final class NativeSoundTimeline {
     public record Cue(String id,String name,float tick,float end,float volume,float pitch,int distance,
                       boolean mono,int limit,boolean tracking,boolean relative) {}
     private NativeSoundTimeline() {}
+    public static long revision(KeyframeChannel<String> channel) {
+        long hash=0xcbf29ce484222325L;
+        for(var key:channel.getKeyframes()) {
+            hash=(hash^Float.floatToIntBits(key.getTick()))*0x100000001b3L;
+            String text=key.getValue(); for(int i=0;i<text.length();i++) hash=(hash^text.charAt(i))*0x100000001b3L;
+        }
+        return hash;
+    }
     public static List<Cue> read(KeyframeChannel<String> channel) {
         var plays=new ArrayList<Cue>(); var stops=new HashMap<String,Float>();
         for (var key:channel.getKeyframes()) {

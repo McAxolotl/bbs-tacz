@@ -32,6 +32,7 @@ public final class BBSTaczClient implements BBSAddonMod {
             String id=packet.readUtf(256); int tick=packet.readVarInt(); boolean playing=packet.readBoolean();
             if(tick>=0&&tick<=100_000_000) client.execute(()->CtrlPlaybackStarts.receiveClock(id,tick,playing));
         });
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(client->RecordedAudio.pruneEditors());
         FilmEvents.CREATED.register(controller -> {
             if (controller instanceof mchorse.bbs_mod.film.WorldFilmController world && !(controller instanceof mchorse.bbs_mod.film.Recorder)
                 && F6Starts.holdInitialFrame(controller.film.getId())) { world.paused=true; world.tick=0; CtrlPlaybackStarts.ready(world); }

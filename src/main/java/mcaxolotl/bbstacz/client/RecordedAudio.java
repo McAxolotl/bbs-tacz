@@ -62,13 +62,14 @@ public final class RecordedAudio {
         Voice(NativeSoundTimeline.Cue cue,GunSoundInstance sound,Entity source) { this.cue=cue; this.sound=sound; this.source=source; }
     }
     private static final class Playback {
-        final List<NativeSoundTimeline.Cue> cues;
+        List<NativeSoundTimeline.Cue> cues;
+        long revision;
         final Map<String,Voice> voices=new HashMap<>();
         final HashSet<String> started=new HashSet<>();
         float previous=Float.NaN;
         boolean playing;
         Boolean firstPerson;
-        Playback(Replay replay) { cues=NativeSoundTimeline.read(((TaczReplayChannels)replay.keyframes).bbstacz$sounds()); }
+        Playback(Replay replay) { var channel=((TaczReplayChannels)replay.keyframes).bbstacz$sounds(); cues=NativeSoundTimeline.read(channel); revision=NativeSoundTimeline.revision(channel); }
         void stop() { voices.values().forEach(voice->voice.sound.setStop()); voices.clear(); }
     }
     public static void begin(Recorder recorder) {
@@ -124,13 +125,21 @@ public final class RecordedAudio {
         boolean video=BBSModClient.getVideoRecorder().isRecording();
         boolean playing=PlaybackContext.playing(controller);
         var tracks=PLAYBACKS.computeIfAbsent(controller,key->new IdentityHashMap<>());
+        // The editor may delete a replay without destroying its controller.
+        var removed=tracks.entrySet().iterator();
+        while(removed.hasNext()) {
+            var entry=removed.next();
+            if(controller.film.replays.getList().stream().noneMatch(replay->replay==entry.getKey())) { entry.getValue().stop(); removed.remove(); }
+        }
         for (var replay:controller.film.replays.getList()) {
             var channel=((TaczReplayChannels)replay.keyframes).bbstacz$sounds();
-            if (channel.isEmpty()) continue;
+            if (channel.isEmpty()) { var old=tracks.remove(replay); if(old!=null) old.stop(); continue; }
             var state=tracks.computeIfAbsent(replay,Playback::new);
+            long revision=NativeSoundTimeline.revision(channel);
+            if(state.revision!=revision) { state.stop(); state.started.clear(); state.cues=NativeSoundTimeline.read(channel); state.revision=revision; }
             float time=replay.getTick(controller.getTick())+FirstPersonPlayback.delta(controller,delta);
             boolean seeking=AudioCursor.seeking(state.previous,time,state.playing,playing,video);
-            if (!replay.enabled.get() || CommandJournal.recorder()!=null && take!=null && take.replay==replay) { state.stop(); state.previous=time; continue; }
+            if (!replay.enabled.get() || CommandJournal.recorder()!=null && take!=null && take.replay==replay) { state.stop(); state.started.clear(); state.previous=time; state.playing=false; continue; }
             if (seeking) { state.stop(); state.started.clear(); }
             boolean fp=PlaybackContext.firstPerson(controller,replay);
             if(state.firstPerson!=null&&state.firstPerson!=fp) { state.stop(); state.started.clear(); }
@@ -176,6 +185,15 @@ public final class RecordedAudio {
             voice.pendingSeek=false;
         });
         voice.paused=paused;
+    }
+    public static void pruneEditors() {
+        var iterator=PLAYBACKS.entrySet().iterator();
+        while(iterator.hasNext()) {
+            var entry=iterator.next();
+            if(entry.getKey() instanceof mchorse.bbs_mod.ui.film.controller.FilmEditorController && FirstPersonPlayback.editorPanel(entry.getKey())==null) {
+                entry.getValue().values().forEach(Playback::stop); iterator.remove();
+            }
+        }
     }
     public static long playedCues() { return playedCues; }
     public static List<GunSoundInstance> voices(BaseFilmController controller) {
