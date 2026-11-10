@@ -20,7 +20,6 @@ public abstract class RecordedAudioTimingMixin {
     @Inject(method = "render", at = @At("HEAD"))
     private void bbstacz$pause(WorldRenderContext render, CallbackInfo ci) {
         var controller = (WorldFilmController)(Object)this;
-        RecordedAudio.playback(controller,render.tickDelta());
         var context = controller.getContext();
         if (RecordedAudio.hasAnyTrack(controller.film)) {
             if (!bbstacz$managing) bbstacz$savedPlaying = context.playing;

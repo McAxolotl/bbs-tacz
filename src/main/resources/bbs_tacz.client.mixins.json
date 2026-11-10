@@ -52,7 +52,8 @@
     "ClockedGunSchedulingMixin",
     "RecordedGunInputMixin",
     "CtrlPlaybackMixin",
-    "CtrlFirstFrameMixin"
+    "CtrlFirstFrameMixin",
+    "RecordedAudioFrameMixin"
   ],
   "injectors": {
     "defaultRequire": 1

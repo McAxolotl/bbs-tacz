@@ -56,9 +56,10 @@ public final class RecordedAudio {
     private static final class Voice {
         final NativeSoundTimeline.Cue cue;
         final GunSoundInstance sound;
+        final Entity source;
         volatile boolean pendingSeek=true;
         boolean paused;
-        Voice(NativeSoundTimeline.Cue cue,GunSoundInstance sound) { this.cue=cue; this.sound=sound; }
+        Voice(NativeSoundTimeline.Cue cue,GunSoundInstance sound,Entity source) { this.cue=cue; this.sound=sound; this.source=source; }
     }
     private static final class Playback {
         final List<NativeSoundTimeline.Cue> cues;
@@ -66,6 +67,7 @@ public final class RecordedAudio {
         final HashSet<String> started=new HashSet<>();
         float previous=Float.NaN;
         boolean playing;
+        Boolean firstPerson;
         Playback(Replay replay) { cues=NativeSoundTimeline.read(((TaczReplayChannels)replay.keyframes).bbstacz$sounds()); }
         void stop() { voices.values().forEach(voice->voice.sound.setStop()); voices.clear(); }
     }
@@ -120,7 +122,7 @@ public final class RecordedAudio {
     public static void playback(BaseFilmController controller,float delta) {
         if (controller instanceof Recorder || controller.film==null || Minecraft.getInstance().player==null) return;
         boolean video=BBSModClient.getVideoRecorder().isRecording();
-        boolean playing=!controller.paused && !Minecraft.getInstance().isPaused();
+        boolean playing=PlaybackContext.playing(controller);
         var tracks=PLAYBACKS.computeIfAbsent(controller,key->new IdentityHashMap<>());
         for (var replay:controller.film.replays.getList()) {
             var channel=((TaczReplayChannels)replay.keyframes).bbstacz$sounds();
@@ -130,16 +132,20 @@ public final class RecordedAudio {
             boolean seeking=AudioCursor.seeking(state.previous,time,state.playing,playing,video);
             if (!replay.enabled.get() || CommandJournal.recorder()!=null && take!=null && take.replay==replay) { state.stop(); state.previous=time; continue; }
             if (seeking) { state.stop(); state.started.clear(); }
+            boolean fp=PlaybackContext.firstPerson(controller,replay);
+            if(state.firstPerson!=null&&state.firstPerson!=fp) { state.stop(); state.started.clear(); }
+            state.firstPerson=fp;
             var entity=controller.getEntities().get(replay.getId());
-            Entity source=replay==controller.film.getFirstPersonReplay()?Minecraft.getInstance().player:entity instanceof MCEntity mc?mc.getMcEntity():null;
-            if (source==null) continue;
+            Entity source=PlaybackContext.soundSource(controller,replay,entity,time,delta);
+            if (source==null) { state.stop(); state.started.clear(); state.previous=time; state.playing=false; continue; }
+            if(state.voices.values().stream().anyMatch(voice->voice.source!=source)) { state.stop(); state.started.clear(); }
             if (playing) for (var cue:state.cues) {
                 if (cue.tick()>time || cue.end()<=time || state.started.contains(cue.id())) continue;
                 // Already finished cues never restart on a subsequent frame. Native concurrency limits still apply.
                 state.started.add(cue.id()); emitting=true;
                 try {
-                    var sound=NativeSoundPlayAccess.bbstacz$play(source,new ResourceLocation(cue.name()),cue.volume(),cue.pitch(),cue.distance(),cue.mono(),cue.limit(),cue.tracking(),cue.relative());
-                    if (sound!=null) { state.voices.put(cue.id(),new Voice(cue,sound)); playedCues++; }
+                    var sound=NativeSoundPlayAccess.bbstacz$play(source,new ResourceLocation(cue.name()),cue.volume(),cue.pitch(),cue.distance(),cue.mono(),cue.limit(),!fp||cue.tracking(),fp&&cue.relative());
+                    if (sound!=null) { state.voices.put(cue.id(),new Voice(cue,sound,source)); playedCues++; }
                 } finally { emitting=false; }
             }
             var iterator=state.voices.values().iterator();

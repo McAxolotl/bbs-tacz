@@ -73,7 +73,7 @@ public final class FirstPersonPlayback {
         }
         return latest;
     }
-    private static UIFilmPanel editorPanel(BaseFilmController controller) {
+    static UIFilmPanel editorPanel(BaseFilmController controller) {
         if (!(controller instanceof FilmEditorController) || !(Minecraft.getInstance().screen instanceof UIScreen)
             || !(UIScreen.getCurrentMenu() instanceof UIDashboard dashboard)) return null;
         return dashboard.getPanels().panel instanceof UIFilmPanel panel && panel.getData() == controller.film ? panel : null;
