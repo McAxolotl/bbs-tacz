@@ -18,6 +18,9 @@ final class ObsReviewSession {
         try {
             scenario = Files.readString(REQUEST).trim();
             if (!scenario.matches("[A-Za-z][A-Za-z0-9_]*")) throw new IllegalArgumentException("Invalid OBS review scenario");
+            // A request is consumed once; restarting Prism must not silently replay a long test.
+            Files.move(REQUEST, Path.of("bbs-tacz-obs-review.consumed"), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            Files.deleteIfExists(Path.of("bbs-tacz-obs-review.go"));
             enabled = true;
             status("STARTING", 0, "Dedicated newly created test world only");
             return scenario;
