@@ -144,6 +144,7 @@ tasks.named('runClient') {
         dependsOn tasks.named('smokeClasses')
         classpath += sourceSets.smoke.runtimeClasspath
         systemProperty 'bbstacz.review', nativeReview
+        if (project.hasProperty('reviewGun')) systemProperty 'bbstacz.review.gun', project.property('reviewGun').toString()
         doFirst { file('run/bbs-tacz-review-' + nativeReview + '.txt').delete() }
         doLast { assertNativeReport(file('run/bbs-tacz-review-' + nativeReview + '.txt'), 'PASS') }
     }

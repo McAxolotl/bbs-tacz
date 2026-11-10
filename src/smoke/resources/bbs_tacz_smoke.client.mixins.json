@@ -14,7 +14,9 @@
     "ProjectileFrameProbeMixin",
     "ExportSlowFrameProbeMixin",
     "ServerShotProbeMixin",
-    "ActionLifecycleProbeMixin"
+    "ActionLifecycleProbeMixin",
+    "NativeInputResultProbeMixin",
+    "ReviewInputFocusMixin"
   ],
   "injectors": {
     "defaultRequire": 1

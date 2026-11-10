@@ -8,6 +8,7 @@ import net.minecraft.client.model.PlayerModel;
 public final class ReviewProbe {
     public record Pose(NativeRenderScope scope, float rightX, float rightY, float rightZ, float leftX, float leftY, float leftZ, int texture) {}
     public static Consumer<Pose> playerDraw;
+    public static Consumer<com.tacz.guns.api.entity.ShootResult> shootResult;
     public static long liveGunDraws;
     public static String exportFilm;
     public static int firstExportTick=-1;
@@ -23,6 +24,17 @@ public final class ReviewProbe {
         long gun=com.tacz.guns.util.time.GunTime.nowNanos();
         if (Double.isNaN(firstWorldTime)) { firstWorldTime=world; firstGunTime=gun; }
         lastWorldTime=world; lastGunTime=gun;
+    }
+    public static float armError(Pose actual,java.util.Map<String,mcaxolotl.bbstacz.recording.PartPose> expected) {
+        var right=expected.get("right_arm"); var left=expected.get("left_arm");
+        if(right==null||left==null) return Float.POSITIVE_INFINITY;
+        float[] angles={actual.rightX(),actual.rightY(),actual.rightZ(),actual.leftX(),actual.leftY(),actual.leftZ()};
+        float error=0;
+        for(int i=0;i<angles.length;i++) {
+            float reference=(i<3?right:left).at(3+i%3),difference=angles[i]-reference;
+            difference=(float)Math.atan2(Math.sin(difference),Math.cos(difference)); error=Math.max(error,Math.abs(difference));
+        }
+        return error;
     }
     public static void player(PlayerModel<?> model) {
         var scope = NativeRenderScope.current();

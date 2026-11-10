@@ -15,6 +15,14 @@ public abstract class F6CaptureProbeMixin {
         var recorder=(VideoRecorder)(Object)this;
         if(!recorder.isRecording()) return;
         ReviewProbe.clock();
+        if (recorder.getCounter()%150==0 && ReviewProbe.exportFilm!=null) {
+            var current=BBSModClient.getFilms().getController(ReviewProbe.exportFilm);
+            System.out.println("[REVIEW export frame] frames="+recorder.getCounter()+" film_tick="+(current==null?-1:current.getTick())
+                +" paused="+(current==null?null:current.paused)+" mc_paused="+net.minecraft.client.Minecraft.getInstance().isPaused()
+                +" server_ticks="+recorder.serverTicks+" fraction="+net.minecraft.client.Minecraft.getInstance().getFrameTime()
+                +" texture="+recorder.getTextureId()+" current_texture="+mchorse.bbs_mod.client.BBSRendering.getTexture().id
+                +" framebuffer="+mchorse.bbs_mod.client.BBSRendering.getFramebuffer().width+"x"+mchorse.bbs_mod.client.BBSRendering.getFramebuffer().height);
+        }
         if(recorder.getCounter()!=0) return;
         if(ReviewProbe.failFirstFrame) { ReviewProbe.failFirstFrame=false; recorder.stopRecording(false); ci.cancel(); return; }
         if(ReviewProbe.exportFilm==null) return;

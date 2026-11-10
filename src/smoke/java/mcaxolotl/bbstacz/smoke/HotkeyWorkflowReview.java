@@ -34,6 +34,8 @@ public class HotkeyWorkflowReview implements ReviewClient.Scenario {
     protected Path output;
     protected int phase, phaseTick, frames;
     private long drawnBefore;
+    protected boolean firstPersonReplay() { return true; }
+    protected CameraType recordCamera() { return CameraType.FIRST_PERSON; }
     protected int recordTicks() { return 50; }
     protected boolean ctrlFinished(Minecraft client,int elapsed) throws Exception { return elapsed==ctrlTicks(); }
     protected int ctrlTicks() { return 10; }
@@ -45,21 +47,21 @@ public class HotkeyWorkflowReview implements ReviewClient.Scenario {
     }
     @Override public boolean tick(Minecraft client,int tick) throws Exception {
         if (tick==0) {
-            client.options.setCameraType(CameraType.FIRST_PERSON);
+            client.options.setCameraType(recordCamera());
             mchorse.bbs_mod.BBSSettings.recordingCountdown.set(0f);
             var form=new TaczForm(); Morph.getMorph(client.player).setForm(form);
-            var gun=GunItemBuilder.create().setId(new ResourceLocation("tacz","ak47")).setAmmoCount(30).setAmmoInBarrel(true).build();
+            var gun=GunItemBuilder.create().setId(new ResourceLocation("tacz","ak47")).setAmmoCount(30).setAmmoInBarrel(true).setFireMode(com.tacz.guns.api.item.gun.FireMode.SEMI).build();
             client.player.setItemSlot(EquipmentSlot.MAINHAND,gun); AttachmentPropertyManager.postChangeEvent(client.player,gun);
             var uuid=client.player.getUUID(); client.getSingleplayerServer().execute(()-> { var p=client.getSingleplayerServer().getPlayerList().getPlayer(uuid); p.setItemSlot(EquipmentSlot.MAINHAND,gun.copy()); });
             film=new Film(); film.setId("bbs-tacz-hotkey-review-"+System.currentTimeMillis());
-            var replay=new Replay("fp_player"); replay.form.set(form); replay.fp.set(true); film.replays.add(replay);
+            var replay=new Replay("fp_player"); replay.form.set(form); replay.fp.set(firstPersonReplay()); film.replays.add(replay);
             // Only the initially empty film is saved, just as a user creating a new film would do.
             ContentType.FILMS.getRepository().save(film.getId(),(mchorse.bbs_mod.data.types.MapType)film.toData());
             panel=BBSModClient.getDashboard().getPanel(UIFilmPanel.class); panel.fill(film); panel.replayEditor.setReplay(replay);
             output=Path.of("review-hotkeys-"+System.currentTimeMillis()).toAbsolutePath(); Files.createDirectories(output); F4ClockReview.configure(output,30);
             var field=BBSModClient.class.getDeclaredField("worldExportSession"); field.setAccessible(true); export=(WorldVideoExportSession)field.get(null);
         }
-        if (phase==0 && tick>30 && ReviewProbe.liveGunDraws>8) { F4ClockReview.key(GLFW.GLFW_KEY_RIGHT_ALT); phase=1; phaseTick=tick; }
+        if (phase==0 && tick>30 && (recordCamera()!=CameraType.FIRST_PERSON||ReviewProbe.liveGunDraws>8)) { F4ClockReview.key(GLFW.GLFW_KEY_RIGHT_ALT); phase=1; phaseTick=tick; }
         else if (phase==1 && BBSModClient.getFilms().getRecorder()!=null) {
             BBSModClient.getFilms().getRecorder().countdown=0; phase=2; phaseTick=tick;
         } else if (phase==2) {
@@ -78,7 +80,7 @@ public class HotkeyWorkflowReview implements ReviewClient.Scenario {
             if (controller instanceof WorldFilmController && !(controller instanceof FrozenFilmController)) {
                 int serverTick=client.getSingleplayerServer().submit(()-> { var action=BBSMod.getActions().getPlayer(film.getId()); return action==null?-1:action.tick; }).get();
                 System.out.println("[REVIEW hotkeys] Ctrl controller="+controller.getClass().getSimpleName()+" duration="+controller.film.calculateDuration()+" client/server ticks="+controller.getTick()+"/"+serverTick);
-                if (FirstPersonPlayback.target(0)!=null) { phase=5; phaseTick=tick; }
+                if (!firstPersonReplay()||FirstPersonPlayback.target(0)!=null) { phase=5; phaseTick=tick; }
                 else ReviewClient.require(tick-phaseTick<200,"Ctrl selected no recorded FP gun (tick="+controller.getTick()+")");
             } else ReviewClient.require(tick-phaseTick<200,"Ctrl failed to start world playback");
         } else if (phase==5 && ctrlFinished(client,tick-phaseTick)) {
@@ -87,12 +89,19 @@ public class HotkeyWorkflowReview implements ReviewClient.Scenario {
             ReviewProbe.exportFilm=film.getId(); ReviewProbe.firstExportTick=-1; drawnBefore=FirstPersonPlayback.renderedFrames();
             F4ClockReview.key(GLFW.GLFW_KEY_F6); phase=7; phaseTick=tick;
         } else if (phase==7) {
+            if ((tick-phaseTick)%100==0) {
+                var current=BBSModClient.getFilms().getController(film.getId());
+                System.out.println("[REVIEW export progress] scenario="+getClass().getSimpleName()+" elapsed_ticks="+(tick-phaseTick)
+                    +" frames="+BBSModClient.getVideoRecorder().getCounter()+" film_tick="+(current==null?-1:current.getTick())
+                    +" paused="+(current==null?null:current.paused)+" video="+BBSModClient.getVideoRecorder().isRecording()
+                    +" camera="+BBSModClient.getCameraController().getCurrent().getClass().getSimpleName());
+            }
             frames=Math.max(frames,BBSModClient.getVideoRecorder().getCounter());
             if (tick-phaseTick>30 && !export.isExporting()) {
                 var movies=F4ClockReview.movies(output);
                 ReviewClient.require(movies.size()==1&&Files.size(movies.get(0))>1000,"F6 hotkey exported no video after real Alt/Ctrl workflow");
                 ReviewClient.require(ReviewProbe.firstExportTick==0,"F6 lost its opening frame");
-                ReviewClient.require(FirstPersonPlayback.renderedFrames()>drawnBefore+5,"F6 did not render the recorded first-person gun");
+                if(firstPersonReplay()) ReviewClient.require(FirstPersonPlayback.renderedFrames()>drawnBefore+5,"F6 did not render the recorded first-person gun");
                 Files.writeString(Path.of("bbs-tacz-review-"+getClass().getSimpleName()+"-video.txt"),movies.get(0)+"\n");
                 System.out.println("[REVIEW hotkeys] F6 frames="+frames+" video="+movies.get(0));
                 verifyVideo(client,movies.get(0));

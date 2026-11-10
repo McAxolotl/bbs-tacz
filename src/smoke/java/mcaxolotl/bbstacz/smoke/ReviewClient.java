@@ -10,6 +10,8 @@ import net.minecraft.client.gui.screens.TitleScreen;
 
 /** Separate native review entrypoint. Opens only a newly generated test world; no production hooks. */
 public final class ReviewClient implements ClientModInitializer {
+    private static boolean running;
+    public static boolean isRunning() { return running; }
     public interface Scenario { boolean tick(Minecraft client, int tick) throws Exception; default int timeoutTicks() { return 1400; } }
     private boolean creating, finished;
     private final long startedAt = System.currentTimeMillis();
@@ -36,6 +38,7 @@ public final class ReviewClient implements ClientModInitializer {
                 if (!creating || client.player == null || !client.gameRenderer.getMainCamera().isInitialized() || TimelessAPI.getAllClientGunIndex().isEmpty()) return;
                 if (scenario == null) {
                     client.setScreen(null);
+                    running = true;
                     scenario = (Scenario) Class.forName("mcaxolotl.bbstacz.smoke." + name).getDeclaredConstructor().newInstance();
                 }
                 if (tick > scenario.timeoutTicks()) throw new AssertionError("Native review timed out");
@@ -44,7 +47,7 @@ public final class ReviewClient implements ClientModInitializer {
         });
     }
     private void finish(Minecraft client, String name, String result) {
-        finished = true;
+        finished = true; running = false;
         try {
             // The result includes teardown. An early PASS hides crashes during borrowed-equipment / action cleanup.
             if (videoActive()) mchorse.bbs_mod.BBSModClient.getVideoRecorder().stopRecording();

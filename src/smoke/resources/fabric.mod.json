@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "bbs_tacz_smoke",
-  "version": "1.0.0",
+  "version": "v1.0.0",
   "name": "BBS TACZ development smoke harness",
   "environment": "client",
   "entrypoints": {
