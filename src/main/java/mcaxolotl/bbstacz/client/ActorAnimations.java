@@ -24,6 +24,16 @@ public final class ActorAnimations {
     private static final Map<LivingEntity, List<WeakReference<TaczVisualPlayer>>> OWNERS = new WeakHashMap<>();
     private static final Map<TaczVisualPlayer, Long> LAST_TICK = new WeakHashMap<>();
     private ActorAnimations() {}
+    public static boolean recordsNativeEvents(AbstractClientPlayer player) {
+        if (player instanceof TaczVisualPlayer) {
+            var scope=NativeRenderScope.current();
+            return scope==null||scope.player!=player||scope.frame==null||scope.frame.humanoid().isEmpty();
+        }
+        var morph=mchorse.bbs_mod.morphing.Morph.getMorph(player);
+        if (morph!=null&&morph.getForm() instanceof mcaxolotl.bbstacz.forms.TaczForm) return true;
+        var recorder=CommandJournal.recorder();
+        return player==net.minecraft.client.Minecraft.getInstance().player&&recorder!=null&&recorder.lastForm instanceof mcaxolotl.bbstacz.forms.TaczForm;
+    }
     public static void tick(IEntity source, TaczVisualPlayer proxy) {
         if (!PlayerAnimatorCompat.isInstalled()) return;
         boolean recorded = hasRecordedPose(source);

@@ -53,7 +53,8 @@
     "RecordedGunInputMixin",
     "CtrlPlaybackMixin",
     "CtrlFirstFrameMixin",
-    "RecordedAudioFrameMixin"
+    "RecordedAudioFrameMixin",
+    "ThirdPersonOneShotMixin"
   ],
   "injectors": {
     "defaultRequire": 1
