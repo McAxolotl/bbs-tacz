@@ -40,7 +40,8 @@ import org.lwjgl.openal.AL11;
 /** Record/replay TACZ's native sound commands. Video audio is captured by BBS's Minecraft sound listener. */
 public final class RecordedAudio {
     private static Take take;
-    private static boolean emitting;
+    private static boolean emitting,spatialEmitting;
+    public static boolean spatialEmitting() { return spatialEmitting; }
     private static final Map<ResourceLocation,Float> LENGTHS=new HashMap<>();
     private static final Map<BaseFilmController,Map<Replay,Playback>> PLAYBACKS=new WeakHashMap<>();
     private static long playedCues;
@@ -151,11 +152,11 @@ public final class RecordedAudio {
             if (playing) for (var cue:state.cues) {
                 if (cue.tick()>time || cue.end()<=time || state.started.contains(cue.id())) continue;
                 // Already finished cues never restart on a subsequent frame. Native concurrency limits still apply.
-                state.started.add(cue.id()); emitting=true;
+                state.started.add(cue.id()); emitting=true; spatialEmitting=!fp;
                 try {
                     var sound=NativeSoundPlayAccess.bbstacz$play(source,new ResourceLocation(cue.name()),cue.volume(),cue.pitch(),cue.distance(),cue.mono(),cue.limit(),!fp||cue.tracking(),fp&&cue.relative());
                     if (sound!=null) { state.voices.put(cue.id(),new Voice(cue,sound,source)); playedCues++; }
-                } finally { emitting=false; }
+                } finally { emitting=false; spatialEmitting=false; }
             }
             var iterator=state.voices.values().iterator();
             while (iterator.hasNext()) {
@@ -234,5 +235,5 @@ public final class RecordedAudio {
             if (right>end) { var tail=(AudioClip)clip.breakDown(end-left); tail.tick.set(end); film.camera.addClip(tail); }
         }
     }
-    public static void clear() { take=null; PLAYBACKS.values().forEach(tracks->tracks.values().forEach(Playback::stop)); PLAYBACKS.clear(); LENGTHS.clear(); emitting=false; }
+    public static void clear() { take=null; PLAYBACKS.values().forEach(tracks->tracks.values().forEach(Playback::stop)); PLAYBACKS.clear(); LENGTHS.clear(); emitting=false; spatialEmitting=false; }
 }
