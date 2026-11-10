@@ -55,7 +55,8 @@
     "CtrlFirstFrameMixin",
     "RecordedAudioFrameMixin",
     "ThirdPersonOneShotMixin",
-    "ReplaySoundListenerMixin"
+    "ReplaySoundListenerMixin",
+    "VideoReadbackStateMixin"
   ],
   "injectors": {
     "defaultRequire": 1
