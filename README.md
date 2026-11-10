@@ -54,7 +54,7 @@ Minecraft **1.20.1 / Fabric** 的 **BBS FS × TACZ-Refabricated** 附属模组�
 | 第一人称开火、换弹、检视、改装、配件视角切换、打断和物理晃动 | 原生求值后的枪械骨骼、最终矩阵、手部摄像机、光照/FOV，加有序命令日志 |
 | 枪火贴图、Snowstorm 粒子、弹壳 | 保存发射年龄、随机旋转/速度、粒子位置/UV/透明度；回放不重新抽随机数 |
 | 所选第一人称皮肤 | 原生纹理别名绑定；手臂、袖层、宽/细模型使用影片形态所选皮肤，不依赖刷新顺序 |
-| TACZ 音效 | 在 `bbs_tacz:sounds` 通道保存原生资源、最终音高/音量与停止事件；重放 TACZ 原生声音实例，F4/F6 通过 Minecraft 声音捕获混音，不生成影片音频剪辑 |
+| TACZ 音效 | 编辑器、FP/TP 回放与虚拟演员均走原生声源；在 `bbs_tacz:sounds` 通道保存原生资源、最终音高/音量与停止事件；重放 TACZ 原生声音实例，F4/F6 通过 Minecraft 声音捕获混音，不生成影片音频剪辑 |
 | F6 播放并录制 | 先同步当前编辑器影片再启动；清理同 ID 的旧预览并等待双端首帧；零延迟、取消与重试均保留门控，不用回拨动作补帧 |
 | Alt/Ctrl 与视频时钟 | Alt 的枪械动作按姿态录制游标记时；Ctrl 跟随服务端动作时钟；F4/F6 的枪械、连发和物理晃动使用同一固定视频时间 |
 | 暂停与跳转 | 根据影片时间采样；不依赖真实时间推进 Lua/粒子模拟 |
@@ -73,7 +73,7 @@ Minecraft **1.20.1 / Fabric** 的 **BBS FS × TACZ-Refabricated** 附属模组�
 - 新录制在影片的 `bbs_tacz:sounds` 通道保存原生声音命令，Ctrl 回放直接使用对应枪包的声音，不创建枪声音频剪辑或外部 WAV 资产。仅旧版影片的 `assets/audio/bbs_tacz/` 音轨仍需随影片分享；旧片未保存的声音参数无法精确推断，建议重新录制。F4/F6 需启用 BBS 视频“导出音频”设置；影片同步、录制游标与首帧握手需客户端/服务端安装同一 BBS TACZ 构建。
 - 回放需要对应枪包和粒子定义；保存影片不会把模型、皮肤纹理或枪包复制进影片/JAR。
 - 客户端暂停/拖动不会反复生成弹丸；**已进入服务端世界的真实弹丸遵循 Minecraft 物理时钟**，不会因客户端编辑器暂停自动冻结/倒退。
-- 自动化测试验证原生接口、数据、矩阵、实际绘制和服务器物理，**并不意味着用户列举的每个复杂动作组合、每个枪包和每种光影已逐像素验收**。完整验收清单见 `docs/TESTING.md`。
+- 自动化测试验证原生接口、数据、矩阵、实际绘制和服务器物理，**并不意味着用户列举的每个复杂动作组合、每个枪包和每种光影已逐像素验收**。完整验收清单见 `docs/TESTING.md`，本轮全枪包枚举、非站立场景及原生／受控测试边界见 `docs/SCENARIO_COVERAGE.md`。
 
 ## 构建与测试
 
@@ -88,11 +88,13 @@ Gradle 使用 Java 21；开发 Minecraft 进程使用 Java 17。
 scripts/verify-replays.sh
 ```
 
-**本轮验证：68 项 JUnit、22 个原生专项、完整 smoke `PASS 66`；实际 F4/F6 H.264/AAC 完整解码通过。复现、修复和最终验收见 `docs/REPLAY_EXPORT_REVIEW.md`。`scripts/verify-replays.sh` 串行运行全部原生场景与媒体解码检查，不并行启动 Minecraft。**
+**2026-11-10 验证：71 项 JUnit、40 项原生专项、smoke `PASS 66`、8 个实际视频及覆盖审计通过。**
+
+**验证入口：** `scripts/verify-replays.sh` 按清单串行构建、运行原生专项、smoke、媒体解码和覆盖账本审计，不并行启动 Minecraft。本轮结果及受控/原生/未验证边界见 `docs/SCENARIO_COVERAGE.md`；`docs/REPLAY_EXPORT_REVIEW.md` 保留 2026-11-09 的历史交付记录。
 
 构建产物位于 `build/libs/`，包含发布 JAR 和源码 JAR。`auditJar` 检查身份、Mixin、独立形态及不内嵌依赖/测试代码。
 
-原生 smoke 使用新建的隔离平坦世界，结果写入 `run/bbs-tacz-smoke.txt`。测试用客户端入口、探针 Mixin 和截图代码不进入发布 JAR；不会读取已有存档，也不上传测试影片。
+原生 smoke 使用新建的隔离平坦世界，结果写入 `run/bbs-tacz-smoke.txt`。测试用客户端入口、探针 Mixin 和截图代码不进入发布 JAR；不会读取用户存档，也不上传测试影片；重新打开专项只读取工具命名的隔离测试存档中的影片。
 
 - 架构：`docs/ARCHITECTURE.md`
 - 独立形态设计说明：`docs/NATIVE_PLAYER_BACKEND.md`

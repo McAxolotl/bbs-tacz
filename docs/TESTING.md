@@ -1,6 +1,8 @@
+> 2026-11-10 最终：71 项 JUnit、40 项原生专项、smoke PASS 66、8 个媒体及覆盖审计通过。完整口径和证据见 [SCENARIO_COVERAGE.md](SCENARIO_COVERAGE.md)。下方 22 项/68 测试为前次历史。
+
 # 验证与回归（独立 TACZ 形态）
 
-## 最近一次交付结果
+## 前次交付历史（2026-11-09）
 
 2026-11-09：**68 项 JUnit、22 个原生专项、完整 smoke `PASS 66`**，发布 JAR 审计通过。完整脚本发现空影片弹丸边界后进行了修复；最终代码又完整运行 smoke，并重测弹道与两条五枪 F4/F6 导出链路，所有关联复测及实际 MP4 解码通过。具体日志、媒体数据及验证边界见 [专项交付记录](REPLAY_EXPORT_REVIEW.md)。
 
@@ -12,7 +14,7 @@
 scripts/verify-replays.sh
 ```
 
-脚本先干净构建，再**串行**运行 22 个原生专项、完整 smoke 和实际 MP4 解码。锁定同一宿主上的测试脚本，并拒绝在已有开发 Minecraft 运行时重编译/启动第二个客户端。日志写入 `run/native-review-logs/<时间>/`，不会被 `clean` 或 `/tmp` 清理删除。单项入口：
+脚本先干净构建，再**串行**运行 `scripts/native-review-scenarios.json` 中的原生专项、完整 smoke、实际 MP4 解码和覆盖账本审计。锁定同一宿主上的测试脚本，并拒绝在已有开发 Minecraft 运行时重编译/启动第二个客户端。日志写入 `run/native-review-logs/<时间>/`，不会被 `clean` 或 `/tmp` 清理删除。单项入口：
 
 ```bash
 ./gradlew runClient -Preview=场景类名

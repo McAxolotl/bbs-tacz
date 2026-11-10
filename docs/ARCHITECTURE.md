@@ -89,3 +89,11 @@ F4/F6 由 BBS 原有的 Minecraft 声音监听器捕获原生实例并完成视�
 回放为新实体、新 owner 和新起点，并按演员新朝向旋转发射偏移和速度；碰撞、伤害、重力、穿透和爆炸交给 TACZ 自身。网络击发通知单独保存，不再次执行原生发射。弹丸朝向由旋转后的真实速度推导并初始化上一帧姿态，避免俯仰符号/Euler 叠加错误。回拨只恢复持久场景动作，不重发瞬时枪火与弹丸；回拨/关闭清理当前影片拥有的弹丸弱引用，不触碰实时枪械或其他影片。第一人称回放拥有玩家枪械期间阻止实时开火输入与晚到预测，避免录制弹丸与鼠标连发叠加。
 
 `PhysicalCrawl` 借用并恢复 pose、forced pose、crawling 和 swimming 状态。干地爬行不是水中游泳；实际 Actor/Player 的维度和眼高受限制。构造期 TACZ holder 尚未初始化时，尺寸查询不会解引用空 holder。客户端与服务端 ownership 分侧清理。演员绑定、服务端 ActionPlayer 和摄像机各自拥有请求，最近仍存在的请求优先，最后一个请求退出时还原。状态与所有者使用弱对象身份键，不能用 Minecraft 按 ID 比较的 Entity.equals 合并集成客户端/服务端实体。
+
+## 2026-11-10 补充：编辑器、读写与读回边界
+
+- `PlaybackContext` 统一 World/Editor 的播放状态与声源：可见编辑器使用 runner，StubEntity 通过渲染代理提供原生声音位置。`BaseFilmController.startRenderFrame` 共用音频入口，修订缓存、轨道删除和关闭编辑器有显式清理。
+- `ThirdPersonOneShotMixin` 只修正 TACZ 形态/录制范围内的已接受动作替换；不会把原生状态锁拒绝的输入变成成功动作。
+- `motion[1]` 保存飞行阶段；可视玩家在 BBS 身体局部坐标复制原生视线与速度插值，保证转向滑翔的根变换。
+- SAVE 的包处理线程和 START 的服务端线程并非同一个线程。`FilmStorageMixin` 对同一个 FilmManager 的完整 load/save 互斥，防止重试写入与 gzip 读取重叠；保留原生权限、备份和迁移。
+- `VideoReadbackStateMixin` 包裹原生读回并在 finally 恢复 GL 纹理/PBO/打包状态。图像、音频、时间和相机取景分别验证；成功编码或 draw 计数不能证明人物出现在成片里。
