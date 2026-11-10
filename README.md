@@ -1,6 +1,6 @@
 # BBS TACZ
 
-Minecraft **1.20.1 / Fabric** 的 **BBS FS × TACZ-Refabricated** 附属模组。
+Minecraft **1.20.1 / Fabric** 的 **BBS FS × TACZ-Refabricated** 兼容性附属模组：添加独立的 TACZ 玩家形态，让 BBS 影片能够记录并回放原生枪械动画、枪声、第三人称装备显示，以及服务端弹丸和爬行动作。
 
 - 名称：**BBS TACZ**
 - 作者：**McAxolotl**
@@ -19,7 +19,7 @@ Minecraft **1.20.1 / Fabric** 的 **BBS FS × TACZ-Refabricated** 附属模组�
 
 ## 安装
 
-本版开发与回归所用版本：
+本版开发与回归使用以下固定版本。安装时需要相应的前置模组；“验证版本”不是对任意更新版本的兼容承诺。Java 运行环境要求 **17 或更高**。
 
 | 前置 | 验证版本 |
 | --- | --- |
@@ -34,6 +34,18 @@ Minecraft **1.20.1 / Fabric** 的 **BBS FS × TACZ-Refabricated** 附属模组�
 安装 `bbs-tacz-v1.0.0.jar`。`forge1.2.0` 是 TACZ 发布版本名的一部分，这里用的是 **Fabric 移植版**，不能替换成 Forge TACZ。
 
 本 JAR 不内嵌 BBS、TACZ、Player Animator 或枪包。真实弹丸和爬行回放需要服务端也安装 BBS、TACZ、本附属模组及其前置。不同/更新版本的兼容性不等同于已验证版本。
+
+Forge Config API Port 是 **TACZ-Refabricated 的传递前置**，也需要安装。TACZ 已随包携带 Simple Bedrock Model 等内部库；不必另找同名库重复安装。游戏运行不需要安装测试用的 `bbs-tacz-review` / `bbs_tacz_smoke`。
+
+### 键位冲突：可选辅助模组
+
+遇到 TACZ 与 BBS 或其他模组的同键绑定冲突，可选用 **NonConflictKeys [Fabric] 1.0.0**（文件名 `NonConflictKeys-Fabric-1.18.X-1.20-1.0.0.jar`，发布页标注支持 Minecraft 1.20.1），或经过核对支持 Fabric 1.20.1 的同类工具。这是客户端辅助模组，**不是 BBS TACZ 的硬性前置**，本模组不内嵌它。
+
+NonConflictKeys 的作用是让同一个输入键对应的多个绑定都能被触发，并非自动为动作分配不同按键。如果两个动作不应同时执行，仍应在“选项 → 控制 → 按键绑定”里手动改键。它也不能修复 FFmpeg 路径错误、缺失音轨或枪械本身不允许的动作。
+
+版本与行为核对依据：作者的 CurseForge「NonConflictKeys [Fabric]」发布页及 Modrinth「NonConflictKeys」项目说明（2026-11-10 核对）。
+
+视频导出还需要可执行的 **FFmpeg**，这是外部程序，不是前置模组；OBS 和 VLC 仅用于录屏与查看成片，不是游戏运行依赖。
 
 ## 使用
 
