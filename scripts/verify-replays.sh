@@ -16,17 +16,20 @@ fi
 # Keep logs outside build/ so clean does not erase evidence, and outside /tmp so they survive host cleanup.
 log_dir="$PWD/run/native-review-logs/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$log_dir"
+started=$(date +%s)
 ./gradlew clean build smokeClasses 2>&1 | tee "$log_dir/build.log"
-scenarios=(
-  ThirdPersonArmsReview FirstPersonSkinReview PlaybackAudioReview AudioRetakeReview
-  NativeSoundExportReview NativeInterruptionExportReview HiddenPreviewReview CrawlOwnershipReview
-  F4ClockReview F4BurstClockReview CtrlStartupReview ActionTailDurationReview ActionLifecycleReview HotkeyWorkflowReview
-  F6ExportReview F6AudioExportReview F6NoDelayExportReview F6DraftExportReview F6CancelReview
-  ProjectileReplayReview MultiGunWorkflowReview F4MultiGunExportReview
-)
+# The manifest is the executable coverage list, not a hand-maintained PASS claim.
+mapfile -t scenarios < <(python3 -c 'import json; print("\n".join(json.load(open("scripts/native-review-scenarios.json"))["standard"]))')
 for scenario in "${scenarios[@]}"; do
-  timeout --kill-after=15s 8m ./gradlew runClient -Preview="$scenario" 2>&1 | tee "$log_dir/$scenario.log"
+  if pgrep -f '^[^ ]*/java .*net\.fabricmc\.devlaunchinjector\.Main' >/dev/null; then
+    echo "A previous Minecraft process is still running; refusing to overlap $scenario." >&2
+    exit 1
+  fi
+  minutes=$(python3 -c 'import json,sys; print(json.load(open("scripts/native-review-scenarios.json"))["timeout_minutes"].get(sys.argv[1],8))' "$scenario")
+  timeout --kill-after=15s "${minutes}m" ./gradlew runClient -Preview="$scenario" 2>&1 | tee "$log_dir/$scenario.log"
 done
 timeout --kill-after=15s 8m ./gradlew runClient -Psmoke 2>&1 | tee "$log_dir/smoke.log"
-python3 scripts/audit-replay-media.py --output "$log_dir/media-audit.json"
+mapfile -t reports < <(python3 -c 'import json; print("\n".join("run/bbs-tacz-review-"+name+"-video.txt" for name in json.load(open("scripts/native-review-scenarios.json"))["media"]))')
+python3 scripts/audit-replay-media.py "${reports[@]}" --since "$started" --output "$log_dir/media-audit.json"
+python3 scripts/audit-replay-coverage.py --since "$started" --output "$log_dir/coverage-audit.json"
 printf '\nAll native scenarios, smoke and media checks passed. Evidence: %s\n' "$log_dir"
