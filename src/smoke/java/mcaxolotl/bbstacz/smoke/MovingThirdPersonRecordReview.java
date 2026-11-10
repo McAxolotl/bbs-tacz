@@ -88,7 +88,8 @@ public final class MovingThirdPersonRecordReview implements ReviewClient.Scenari
             var source=new mchorse.bbs_mod.forms.entities.StubEntity(client.level); source.setForm(new TaczForm());
             var renderer=(mcaxolotl.bbstacz.client.forms.TaczFormRenderer)mchorse.bbs_mod.forms.FormUtilsClient.getRenderer(source.getForm());
             for(int at:new int[]{25,35,Math.max(0,meleeTick-30)+12}) {
-                var frame=mcaxolotl.bbstacz.recording.FrameSampler.sample(frames,at); film.replays.getList().get(0).keyframes.apply(at,source);
+                // NativePreviewSmoke draws at delta=0.5, so compare the same sub-tick pose on all six axes.
+                var frame=mcaxolotl.bbstacz.recording.FrameSampler.sample(frames,at+0.5f); film.replays.getList().get(0).keyframes.apply(at,source);
                 final int sampleTick=at;
                 ReviewProbe.playerDraw=draw->{if(draw.scope().entity==source) {
                     var expected=frame.humanoid().get("right_arm");

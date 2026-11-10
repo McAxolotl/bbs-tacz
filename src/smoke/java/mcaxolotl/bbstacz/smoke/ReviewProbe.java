@@ -8,6 +8,7 @@ import net.minecraft.client.model.PlayerModel;
 public final class ReviewProbe {
     public record Pose(NativeRenderScope scope, float rightX, float rightY, float rightZ, float leftX, float leftY, float leftZ, int texture) {}
     public static Consumer<Pose> playerDraw;
+    public static Consumer<String> recordedGunDraw;
     public static Consumer<com.tacz.guns.api.entity.ShootResult> shootResult;
     public static long liveGunDraws;
     public static String exportFilm;
@@ -24,6 +25,12 @@ public final class ReviewProbe {
         long gun=com.tacz.guns.util.time.GunTime.nowNanos();
         if (Double.isNaN(firstWorldTime)) { firstWorldTime=world; firstGunTime=gun; }
         lastWorldTime=world; lastGunTime=gun;
+    }
+    public static void requireFramed(net.minecraft.client.Minecraft client,mchorse.bbs_mod.forms.entities.IEntity actor) {
+        var camera=client.gameRenderer.getMainCamera(); var position=camera.getPosition(); var direction=camera.getLookVector();
+        var delta=new net.minecraft.world.phys.Vec3(actor.getX(),actor.getY()+0.9,actor.getZ()).subtract(position);
+        double alignment=delta.normalize().dot(new net.minecraft.world.phys.Vec3(direction.x,direction.y,direction.z));
+        ReviewClient.require(delta.length()<10&&alignment>0.85,"TP actor rendered outside the output camera: distance="+delta.length()+" alignment="+alignment+" camera="+position);
     }
     public static float armError(Pose actual,java.util.Map<String,mcaxolotl.bbstacz.recording.PartPose> expected) {
         var right=expected.get("right_arm"); var left=expected.get("left_arm");

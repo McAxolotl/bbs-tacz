@@ -19,5 +19,9 @@ public abstract class ReviewGunReadyMixin {
     @Inject(method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemDisplayContext;Lnet/minecraft/client/renderer/RenderType;IIFFFFLnet/minecraft/client/renderer/MultiBufferSource;)V", at = @At("TAIL"))
     private void bbstacz$draw(PoseStack stack, ItemStack gun, ItemDisplayContext mode, RenderType type, int light, int overlay, float r, float g, float b, float a, MultiBufferSource buffers, CallbackInfo ci) {
         if(mode.firstPerson() && !FirstPersonPlayback.isRendering()) ReviewProbe.liveGunDraws++;
+        if(mode.firstPerson() && FirstPersonPlayback.isRendering() && ReviewProbe.recordedGunDraw!=null) {
+            var item=com.tacz.guns.api.item.IGun.getIGunOrNull(gun);
+            if(item!=null) ReviewProbe.recordedGunDraw.accept(item.getGunId(gun).getPath());
+        }
     }
 }

@@ -94,7 +94,7 @@ public class HotkeyWorkflowReview implements ReviewClient.Scenario {
                 System.out.println("[REVIEW export progress] scenario="+getClass().getSimpleName()+" elapsed_ticks="+(tick-phaseTick)
                     +" frames="+BBSModClient.getVideoRecorder().getCounter()+" film_tick="+(current==null?-1:current.getTick())
                     +" paused="+(current==null?null:current.paused)+" video="+BBSModClient.getVideoRecorder().isRecording()
-                    +" camera="+BBSModClient.getCameraController().getCurrent().getClass().getSimpleName());
+                    +" camera="+(BBSModClient.getCameraController().getCurrent()==null?"none":BBSModClient.getCameraController().getCurrent().getClass().getSimpleName()));
             }
             frames=Math.max(frames,BBSModClient.getVideoRecorder().getCounter());
             if (tick-phaseTick>30 && !export.isExporting()) {

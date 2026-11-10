@@ -22,7 +22,10 @@ public final class ProjectileProbe {
     public static void draw(EntityKineticBullet bullet) {
         if (!phase.equals("record")&&!phase.equals("ctrl")&&!phase.equals("f6")&&!phase.equals("f4")) return;
         if (phase.equals("f4")&&!mchorse.bbs_mod.BBSModClient.getVideoRecorder().isRecording()) return;
-        if(drawn.put(bullet.getId(),frame)!=null) duplicateDraws++;
+        if(drawn.put(bullet.getId(),frame)!=null) {
+            duplicateDraws++;
+            if(duplicateDraws<=2) { System.out.println("[REVIEW duplicate tracer] phase="+phase+" frame="+frame+" id="+bullet.getId()+" camera="+net.minecraft.client.Minecraft.getInstance().gameRenderer.getMainCamera().getPosition()); Thread.dumpStack(); }
+        }
         rendered++; phaseDraws.merge(phase,1,Integer::sum);
     }
     public static int draws(String phase) { return phaseDraws.getOrDefault(phase,0); }
